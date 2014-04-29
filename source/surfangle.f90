@@ -1,7 +1,10 @@
-! grotoconfig
+! surfangle
 !
-! Created on: Mar 9, 2012
-! Author: Pedro Duarte e Pedro Morgado
+! Created on: Apr 28, 2014
+! Author: Pedro Duarte e Miguel Teixeira
+! License: MIT
+! Description: Calculate the angle from the plane on the base of the 
+! molecule, to a mean segment representing the molecule.
 
 program surfangle
 
@@ -20,7 +23,7 @@ program surfangle
 	! Read positions and make CONFIG file
 	fmt="(3(f20.12))"
 	!File HEADER
-	write(9,*) "Angles to surface. (Degrees) - Average over simulation in the end."
+	write(9,*) "Angles to surface (Degrees). Average over all simulation at the end of file."
 
 	!File BODY
 	start = .TRUE.
