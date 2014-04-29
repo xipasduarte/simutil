@@ -40,8 +40,8 @@ program surfangle
 		if(status .ne. 0) then
 			! Write Average Angle
 			write(9,*) "Average Angle", global_angle/global_nmol*360/2/pi
+			EXIT
 		end if
-			
 		
 		if(label=="timestep") then
 			if(start) then
