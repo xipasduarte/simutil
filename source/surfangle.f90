@@ -32,51 +32,54 @@ program surfangle
 	
 	angles = 0
 	nmol = 0
-	status = 0
 	
-	do while(status .eq. 0)
+	do
 		read(8,*,iostat=status) label, index
 		
-		if(status .ne. 0) then
-			! Write Average Angle
-			write(9,*) "Average Angle", global_angle/global_nmol*360/2/pi
-			EXIT
-		end if
-		
-		if(label=="timestep") then
-			if(start) then
-				start = .FALSE.
-			else
-				write(9,*) frame, (angles/nmol*360/2/pi)
-				
-				! Global Average Angle
-				global_angle = global_angle + angles
-				global_nmol = global_nmol + nmol
-				
-				! Reset variables
-				angles = 0
-				nmol = 0
-			end if
-			
-			frame = index
-			read(8,*) skip
-			read(8,*) skip
-			read(8,*) skip
-		
-		else if(label == "OH") then
-			read(8,*) x1, y1, z1
-		
-		else if(label == "CT") then
-			read(8,*) x2, y2, z2
-			
-			a = sqrt( (x2-x1)**2 + (y2-y1)**2 )
-			c = sqrt( (x2-x1)**2 + (y2-y1)**2 +(z2-z1)**2 )
-			
-			angles = angles + acos(a/c)
-			nmol = nmol + 1
-		
+		if(status==5010) then
+			status = 0
 		else
-			read(8,*) skip
+			if(status .ne. 0) then
+				! Write Average Angle
+				write(9,*) "Average Angle", global_angle/global_nmol*360/2/pi
+				EXIT
+			end if
+		
+			if(label=="timestep") then
+				if(start) then
+					start = .FALSE.
+				else
+					write(9,*) frame, (angles/nmol*360/2/pi)
+				
+					! Global Average Angle
+					global_angle = global_angle + angles
+					global_nmol = global_nmol + nmol
+				
+					! Reset variables
+					angles = 0
+					nmol = 0
+				end if
+			
+				frame = index
+				read(8,*) skip
+				read(8,*) skip
+				read(8,*) skip
+		
+			else if(label == "OH") then
+				read(8,*) x1, y1, z1
+		
+			else if(label == "CT") then
+				read(8,*) x2, y2, z2
+			
+				a = sqrt( (x2-x1)**2 + (y2-y1)**2 )
+				c = sqrt( (x2-x1)**2 + (y2-y1)**2 +(z2-z1)**2 )
+			
+				angles = angles + acos(a/c)
+				nmol = nmol + 1
+		
+			else
+				read(8,*) skip
+			end if
 		end if
 	end do
 
