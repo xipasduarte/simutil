@@ -1,9 +1,9 @@
 ! surfplane
 !
 ! Created on: Apr 30, 2014
-! Author: Pedro Duarte e Miguel Teixeira
-! License: MIT
-! Description: 
+! Author: Pedro Duarte and Miguel Teixeira
+! License: MIT License
+! Description: Determine the surface of Water in DL Poly simulations.
 
 program surfplane
 
