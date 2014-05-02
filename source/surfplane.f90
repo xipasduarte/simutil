@@ -3,7 +3,8 @@
 ! Created on: Apr 30, 2014
 ! Author: Pedro Duarte and Miguel Teixeira
 ! License: MIT License
-! Description: Determine the surface of Water in DL Poly simulations.
+! Description: Determine the surface cluster of water molecules on the surface
+! in DL_POLY simulations.
 
 program surfplane
 
