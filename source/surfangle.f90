@@ -4,7 +4,8 @@
 ! Author: Pedro Duarte and Miguel Teixeira
 ! License: MIT License
 ! Description: Calculate the angle from the plane on the base of the 
-! molecule, to a mean segment representing the molecule.
+! molecule, to a mean segment representing the molecule. Uses DL_POLY
+! HISTORY files as input.
 
 program surfangle
 
