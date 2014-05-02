@@ -1,8 +1,8 @@
 ! surfangle
 !
 ! Created on: Apr 28, 2014
-! Author: Pedro Duarte e Miguel Teixeira
-! License: MIT
+! Author: Pedro Duarte and Miguel Teixeira
+! License: MIT License
 ! Description: Calculate the angle from the plane on the base of the 
 ! molecule, to a mean segment representing the molecule.
 
