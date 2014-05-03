@@ -15,7 +15,7 @@ program surfplane
 	real, dimension(n*5) :: plane
 	integer :: nmol, status, i, j, k, index
 	character :: label*8, skip*80
-	real :: x, y, z, rW, dist, maxz
+	real :: x, y, z, rW, dist, maxz, viz
 	
 	open(8, file="HISTORY", status="old", action="read")
 	open(9, file="HISTORY-plane", status="replace", action="write") ! File to write output
@@ -29,6 +29,7 @@ program surfplane
 	read(8,*) skip
 	read(8,*) skip
 	
+	! Count how many neighbors each point has
 	do	
 		read(8,*,iostat=status) label, index
 		
@@ -52,12 +53,11 @@ program surfplane
 			
 			j = (nmol-1)*(5)
 			
-			do i=1,j
+			do i=1,(nmol-1)
 				
 				dist = sqrt( (plane((i-1)*5+3)-x)**2 + (plane((i-1)*5+4)-y)**2 + (plane((i-1)*5+5)-z)**2 )
 				if(dist < 4*rW) then
-					plane((i-1)*5+2) = plane((i-1)*5+2) + 1 
-					write(*,*) plane((i-1)*5+2)
+					plane((i-1)*5+2) = plane((i-1)*5+2) + 1
 				end if
 				
 			end do
@@ -77,14 +77,21 @@ program surfplane
 		end if
 	end do
 	
-	write(*,*) "out"
 	close(8)
 	
+	! Calculate average neighbors
+	viz = 0
+	do i=2,n*5,5
+		viz = viz + plane(i)
+	end do
+	viz = viz/n
+	
+	! Determine the surface points
 	do i=1,n
 		
-		if(plane((i-1)*5+2) < 12) then
+		if(plane((i-1)*5+2) < viz) then
 			if( (maxz-plane((i-1)*5+5)) < 2*rW ) then
-				write(9,*) plane((i-1)*5+3), plane((i-1)*5+4), plane((i-1)*5+5)
+				write(9,*) plane((i-1)*5+1), plane((i-1)*5+2), plane((i-1)*5+5)
 			end if
 		end if
 		
