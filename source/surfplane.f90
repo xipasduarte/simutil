@@ -11,8 +11,8 @@ program surfplane
 	implicit none
 	! Variable declaration
 	integer :: n
-	parameter ( n=12 )
-	real, dimension(4000*(3*n+1)) :: plane
+	parameter ( n=4000 )
+	real, dimension(n*5) :: plane
 	integer :: nmol, status, i, j, k, index
 	character :: label*8, skip*80
 	real :: x, y, z, rW, dist, maxz
@@ -50,29 +50,23 @@ program surfplane
 				maxz = z
 			end if
 			
-			j = (nmol-1)*(3*n+1)
+			j = (nmol-1)*(5)
 			
-			do i=1,j,(3*n+1)
+			do i=1,j
 				
-				dist = sqrt( (plane(i+1)-x)**2 + (plane(i+2)-y)**2 + (plane(i+3)-z)**2 )
+				dist = sqrt( (plane((i-1)*5+3)-x)**2 + (plane((i-1)*5+4)-y)**2 + (plane((i-1)*5+5)-z)**2 )
 				if(dist < 4*rW) then
-					do k=i+4,i+(3*n+1),3
-						if(ABS(plane(k)) + ABS(plane(k+1)) + ABS(plane(k+2)) == 0) then
-							plane(k) = x
-							plane(k+1) = y
-							plane(k+2) = z
-							
-							EXIT
-						end if
-					end do
+					plane((i-1)*5+2) = plane((i-1)*5+2) + 1 
+					write(*,*) plane((i-1)*5+2)
 				end if
 				
 			end do
 			
 			plane(j+1) = index
-			plane(j+2) = x
-			plane(j+3) = y
-			plane(j+4) = z
+			plane(j+2) = 0
+			plane(j+3) = x
+			plane(j+4) = y
+			plane(j+5) = z
 			
 		else
 			read(8,*,iostat=status) skip
@@ -83,13 +77,14 @@ program surfplane
 		end if
 	end do
 	
+	write(*,*) "out"
 	close(8)
 	
-	do i=1,4000
+	do i=1,n
 		
-		if(ABS(plane(i*(3*n+1)-2)) + ABS(plane(i*(3*n+1)-1)) + ABS(plane(i*(3*n+1))) == 0) then
-			if( (maxz-plane((i-1)*(3*n+1)+4)) < 2*rW ) then
-				write(9,*) plane((i-1)*(3*n+1)+1), plane((i-1)*(3*n+1)+4)
+		if(plane((i-1)*5+2) < 12) then
+			if( (maxz-plane((i-1)*5+5)) < 2*rW ) then
+				write(9,*) plane((i-1)*5+3), plane((i-1)*5+4), plane((i-1)*5+5)
 			end if
 		end if
 		
