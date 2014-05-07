@@ -30,6 +30,7 @@ program surfplane
 	read(8,*) skip
 	
 	! Count how many neighbors each point has
+	! 5 element arrays: (1) index; (2) neighbours; (3,4,5) x,y and coord;
 	do	
 		read(8,*,iostat=status) label, index
 		
@@ -91,7 +92,7 @@ program surfplane
 		
 		if(plane((i-1)*5+2) < viz) then
 			if( (maxz-plane((i-1)*5+5)) < 2*rW ) then
-				write(9,*) plane((i-1)*5+1), plane((i-1)*5+2), plane((i-1)*5+5)
+				write(9,*) plane((i-1)*5+3), plane((i-1)*5+4), plane((i-1)*5+5)
 			end if
 		end if
 		
