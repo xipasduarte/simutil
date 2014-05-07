@@ -14,17 +14,17 @@ program surfangle
 	character(len=80) :: fmt, label
 	character (len=132) :: skip
 	integer :: index, nmol, status, frame, global_nmol
-	real :: x1, y1, z1, x2, y2, z2, global_angle, angles, a, c
+	real :: x1, y1, z1, x2, y2, z2, global_angle, angles, angle, a, c
 	real, parameter :: pi = 4 * atan(1.0)
 	logical :: start
 
 	open(8, file="HISTORY", status="old", action="read") ! To do the actual conversion
-	open(9, file="HISTORY-ANGLE", status="replace", action="write") ! File to write output
+	open(9, file="HISTORY-angle", status="replace", action="write") ! File to write output
+	open(10, file="HISTORY-angles", status="replace", action="write") ! File to write output
 	
-	! Read positions and make CONFIG file
-	fmt="(3(f20.12))"
 	!File HEADER
-	write(9,*) "Angles to surface (Degrees). Average over all simulation at the end of file."
+	write(9,*) "Timestep average angles to surface (Degrees). Average over all simulation at the end of file."
+	write(10,*) "Angles to surface (Degrees)."
 
 	!File BODY
 	start = .TRUE.
@@ -34,56 +34,70 @@ program surfangle
 	angles = 0
 	nmol = 0
 	
+	! Discard HEADER
+	read(8,*) skip; read(8,*) skip;
+	
 	do
 		read(8,*,iostat=status) label, index
 		
-		if(status==5010) then
-			status = 0
-		else
-			if(status .ne. 0) then
-				! Write Average Angle
-				write(9,*) "Average Angle", global_angle/global_nmol*360/2/pi
-				EXIT
-			end if
-		
-			if(label=="timestep") then
-				if(start) then
-					start = .FALSE.
-				else
-					write(9,*) frame, (angles/nmol*360/2/pi)
+		if(status .eq. -1) then
+			EXIT
+		end if
+	
+		if(label=="timestep") then
+			if(start) then
+				start = .FALSE.
 				
-					! Global Average Angle
-					global_angle = global_angle + angles
-					global_nmol = global_nmol + nmol
-				
-					! Reset variables
-					angles = 0
-					nmol = 0
-				end if
-			
-				frame = index
-				read(8,*) skip
-				read(8,*) skip
-				read(8,*) skip
-		
-			else if(label == "OH") then
-				read(8,*) x1, y1, z1
-		
-			else if(label == "CT") then
-				read(8,*) x2, y2, z2
-			
-				a = sqrt( (x2-x1)**2 + (y2-y1)**2 )
-				c = sqrt( (x2-x1)**2 + (y2-y1)**2 +(z2-z1)**2 )
-			
-				angles = angles + acos(a/c)
-				nmol = nmol + 1
-		
+				write(10,*) "timestep    ", index
 			else
-				read(8,*) skip
+				write(10,*) "timestep    ", index
+				
+				write(9,*) frame, (angles/nmol*360/2/pi)
+			
+				! Global Average Angle
+				global_angle = global_angle + angles
+				global_nmol = global_nmol + nmol
+			
+				! Reset variables
+				angles = 0
+				nmol = 0
 			end if
+		
+			frame = index
+			read(8,*) skip
+			read(8,*) skip
+			read(8,*) skip
+	
+		else if(label == "OH") then
+			read(8,*) x1, y1, z1
+	
+		else if(label == "CT") then
+			read(8,*) x2, y2, z2
+		
+			a = sqrt( (x2-x1)**2 + (y2-y1)**2 )
+			c = sqrt( (x2-x1)**2 + (y2-y1)**2 +(z2-z1)**2 )
+			
+			angle = acos(a/c)
+			angles = angles + angle
+			nmol = nmol + 1
+			
+			! Write all angles
+			write(10,*) index, angle
+		else
+			read(8,*,iostat=status) skip
+		end if
+		
+		if(status .eq. -1) then
+			EXIT
 		end if
 	end do
+	
+	! Write final angle
+	write(9,*) frame, (angles/nmol*360/2/pi)
 
+	! Write Average Angle
+	write(9,*) "Average Angle", global_angle/global_nmol*360/2/pi
+	
 	close(8)
 	close(9)
 
