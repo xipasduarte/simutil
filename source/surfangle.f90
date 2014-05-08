@@ -13,26 +13,31 @@ program surfangle
 	! Variable declaration
 	character(len=80) :: fmt, label
 	character (len=132) :: skip
-	integer :: index, nmol, status, frame, global_nmol
+	integer :: index, nmol, status, frame, global_nmol, hist_slot
+	integer, dimension(9) :: hist
 	real :: x1, y1, z1, x2, y2, z2, global_angle, angles, angle, a, c
 	real, parameter :: pi = 4 * atan(1.0)
 	logical :: start
 
-	open(8, file="HISTORY", status="old", action="read") ! To do the actual conversion
-	open(9, file="HISTORY-angle", status="replace", action="write") ! File to write output
-	open(10, file="HISTORY-angles", status="replace", action="write") ! File to write output
+	open(8, file="HISTORY", status="old", action="read") ! Open HISTORY
+	open(9, file="HISTORY-angle", status="replace", action="write") ! Create and open output for average angles
+	open(10, file="HISTORY-angles", status="replace", action="write") ! Create and open output for all angles
+	open(11, file="HISTORY-hist", status="replace", action="write") ! Create and open output for histograms
 	
-	!File HEADER
+	! File HEADER
 	write(9,*) "Timestep average angles to surface (Degrees). Average over all simulation at the end of file."
 	write(10,*) "Angles to surface (Degrees)."
+	write(11,*) "ts|angle    ", 10, 20, 30, 40, 50, 60, 70, 80, 90
 
-	!File BODY
+	! Variable inicialization
 	start = .TRUE.
 	global_angle = 0
 	global_nmol = 0
 	
 	angles = 0
 	nmol = 0
+	
+	hist = 0
 	
 	! Discard HEADER
 	read(8,*) skip; read(8,*) skip;
@@ -52,15 +57,20 @@ program surfangle
 			else
 				write(10,*) "timestep    ", index
 				
+				! Write average angle for previous timestep
 				write(9,*) frame, angles/nmol
 			
 				! Global Average Angle
 				global_angle = global_angle + angles
 				global_nmol = global_nmol + nmol
 			
+				! Write histogram
+				write(11,*) frame, hist
+			
 				! Reset variables
 				angles = 0
 				nmol = 0
+				hist = 0
 			end if
 		
 			frame = index
@@ -81,8 +91,13 @@ program surfangle
 			angles = angles + angle
 			nmol = nmol + 1
 			
-			! Write all angles
+			! Write to all angles
 			write(10,*) index, angle
+			
+			! Create histogram
+			hist_slot = int(floor(angle/10))
+			write(*,*) hist_slot
+			hist(hist_slot) = hist(hist_slot) + 1 
 		else
 			read(8,*,iostat=status) skip
 		end if
@@ -92,8 +107,9 @@ program surfangle
 		end if
 	end do
 	
-	! Write final angle
+	! Write final angle and histogram
 	write(9,*) frame, angles/nmol
+	write(11,*) frame, hist
 
 	! Write Average Angle
 	write(9,*) "Average Angle", global_angle/global_nmol
