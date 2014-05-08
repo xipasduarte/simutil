@@ -49,7 +49,7 @@ program surfplane
 			
 			read(8,*) x, y, z
 			
-			write(10,*) x, y, z
+			!write(10,*) x, y, z
 			
 			if(z>maxz) then
 				maxz = z
@@ -92,6 +92,7 @@ program surfplane
 	
 	! Determine the surface points
 	do i=1,n
+		write(10,*) plane((i-1)*5+1), plane((i-1)*5+2)
 		
 		if(plane((i-1)*5+2) < viz-3) then
 			!if( (maxz-plane((i-1)*5+5)) < 3*rW ) then
