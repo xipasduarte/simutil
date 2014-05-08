@@ -31,7 +31,7 @@ program surfplane
 	read(8,*) skip
 	
 	! Count how many neighbors each point has
-	! 5 element arrays: (1) index; (2) neighbours; (3,4,5) x,y and coord;
+	! 5 element arrays: (1) index; (2) neighbours; (3,4,5) x,y and z coord;
 	do	
 		read(8,*,iostat=status) label, index
 		
