@@ -60,7 +60,7 @@ program surfplane
 			do i=1,(nmol-1)
 				
 				dist = sqrt( (plane((i-1)*5+3)-x)**2 + (plane((i-1)*5+4)-y)**2 + (plane((i-1)*5+5)-z)**2 )
-				if(dist < 4*rW) then
+				if(dist < 4*rW .and. z-plane((i-1)*5+5) > 0) then
 					plane((i-1)*5+2) = plane((i-1)*5+2) + 1
 				end if
 				
@@ -92,14 +92,19 @@ program surfplane
 	
 	! Determine the surface points
 	do i=1,n
-		write(10,*) plane((i-1)*5+1), plane((i-1)*5+2)
+		write(10,*) plane((i-1)*5+3), plane((i-1)*5+4), plane((i-1)*5+5)
 		
-		if(plane((i-1)*5+2) < viz-3) then
-			!if( (maxz-plane((i-1)*5+5)) < 3*rW ) then
+		if(plane((i-1)*5+2) < viz) then
+			if( (maxz-plane((i-1)*5+5)) < 2*rW ) then
 				write(9,*) plane((i-1)*5+3), plane((i-1)*5+4), plane((i-1)*5+5)
-				!end if
+			end if
+
+			if( 2*rW < (maxz-plane((i-1)*5+5)) .and. (maxz-plane((i-1)*5+5)) < 5*rW) then
+				if( ABS(plane((i-1)*5+3)) < 53.21/2-2*rW .and. ABS(plane((i-1)*5+4)) < 53.21/2-2*rW ) then
+					write(9,*) plane((i-1)*5+3), plane((i-1)*5+4), plane((i-1)*5+5)
+				end if
+			end if
 		end if
-		
 	end do
 	
 	close(9); close(10);
