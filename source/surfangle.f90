@@ -52,7 +52,7 @@ program surfangle
 			else
 				write(10,*) "timestep    ", index
 				
-				write(9,*) frame, (angles/nmol*360/2/pi)
+				write(9,*) frame, angles/nmol
 			
 				! Global Average Angle
 				global_angle = global_angle + angles
@@ -77,7 +77,7 @@ program surfangle
 			a = sqrt( (x2-x1)**2 + (y2-y1)**2 )
 			c = sqrt( (x2-x1)**2 + (y2-y1)**2 +(z2-z1)**2 )
 			
-			angle = acos(a/c)
+			angle = acos(a/c)*360/2/pi
 			angles = angles + angle
 			nmol = nmol + 1
 			
@@ -93,12 +93,11 @@ program surfangle
 	end do
 	
 	! Write final angle
-	write(9,*) frame, (angles/nmol*360/2/pi)
+	write(9,*) frame, angles/nmol
 
 	! Write Average Angle
-	write(9,*) "Average Angle", global_angle/global_nmol*360/2/pi
+	write(9,*) "Average Angle", global_angle/global_nmol
 	
-	close(8)
-	close(9)
+	close(8); close(9); close(10);
 
 end program surfangle

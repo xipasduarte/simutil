@@ -19,6 +19,7 @@ program surfplane
 	
 	open(8, file="HISTORY", status="old", action="read")
 	open(9, file="HISTORY-plane", status="replace", action="write") ! File to write output
+	open(10, file="HISTORY-box", status="replace", action="write") ! File to write output
 	
 	nmol = 0
 	rW = 1.6
@@ -47,6 +48,8 @@ program surfplane
 			nmol = nmol + 1
 			
 			read(8,*) x, y, z
+			
+			write(10,*) x, y, z
 			
 			if(z>maxz) then
 				maxz = z
@@ -90,14 +93,14 @@ program surfplane
 	! Determine the surface points
 	do i=1,n
 		
-		if(plane((i-1)*5+2) < viz) then
-			if( (maxz-plane((i-1)*5+5)) < 2*rW ) then
+		if(plane((i-1)*5+2) < viz-3) then
+			!if( (maxz-plane((i-1)*5+5)) < 3*rW ) then
 				write(9,*) plane((i-1)*5+3), plane((i-1)*5+4), plane((i-1)*5+5)
-			end if
+				!end if
 		end if
 		
 	end do
 	
-	close(9)
+	close(9); close(10);
 	
 end program surfplane
