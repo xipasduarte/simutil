@@ -13,7 +13,7 @@ program surfangle
 	! Variable declaration
 	character(len=80) :: fmt, label
 	character (len=132) :: skip
-	integer :: index, nmol, status, frame, global_nmol, hist_slot
+	integer :: index, nmol, status, frame, global_nmol, hist_slot, i
 	integer, dimension(9) :: hist
 	real :: x1, y1, z1, x2, y2, z2, global_angle, angles, angle, a, c
 	real, parameter :: pi = 4 * atan(1.0)
@@ -27,7 +27,7 @@ program surfangle
 	! File HEADER
 	write(9,*) "Timestep average angles to surface (Degrees). Average over all simulation at the end of file."
 	write(10,*) "Angles to surface (Degrees)."
-	write(11,*) "ts|angle    ", 10, 20, 30, 40, 50, 60, 70, 80, 90
+	!write(11,*) "ts          angle       frequency   "
 
 	! Variable inicialization
 	start = .TRUE.
@@ -65,7 +65,9 @@ program surfangle
 				global_nmol = global_nmol + nmol
 			
 				! Write histogram
-				write(11,*) frame, hist
+				do i=1,size(hist)
+					write(11,*) frame, i*10, hist(i)
+				end do
 			
 				! Reset variables
 				angles = 0
@@ -96,7 +98,6 @@ program surfangle
 			
 			! Create histogram
 			hist_slot = int(floor(angle/10))
-			write(*,*) hist_slot
 			hist(hist_slot) = hist(hist_slot) + 1 
 		else
 			read(8,*,iostat=status) skip
@@ -109,7 +110,9 @@ program surfangle
 	
 	! Write final angle and histogram
 	write(9,*) frame, angles/nmol
-	write(11,*) frame, hist
+	do i=1,size(hist)
+		write(11,*) frame, i*10, hist(i)
+	end do
 
 	! Write Average Angle
 	write(9,*) "Average Angle", global_angle/global_nmol
