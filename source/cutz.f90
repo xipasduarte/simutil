@@ -9,10 +9,10 @@ program cutz
 
 	implicit none
 	! Variable declaration
-	character :: label*8, fmt1*30, fmt3*30, fmt2*30, fmt4*30
-	character (len=20) :: skip
-	integer :: index, i, status, a, b, c
-	real :: x, y, z, vx, vy, vz, ax, ay, az, minz, xbox, ybox, zbox, d
+	character :: label*8, fmt_all*5, fmt1*30, fmt2*30, all*60
+	character (len=16) :: x, y, z
+	integer :: index, i, j, status
+	real :: minz, numbz
 
 	open(8, file="CONFIG", status="old", action="read") ! Open CONFIG
 	open(9, file="CONFIG-cutz", status="replace", action="write") ! Create output CONFIG
@@ -22,23 +22,16 @@ program cutz
 	read(*,*) minz
 	
 	! Variable inicialization
-	fmt1 = '(3I10.1, 4X, ES16.10E2)'
-	fmt2 = '(3(F20.12))'
-	fmt3 = '(3(f20.10))'
-	fmt4 = '(A8, I10)'
+	fmt_all = '(A60)'
+	fmt1 = '(A16, 2(A20))'
+	fmt2 = '(A8, I10)'
 	
 	index = 1 
 	
 	! File HEADER
-	read(8,*) skip
-	write(9,*) skip
-	
-	read(8,*) a, b, c, d
-	write(9,fmt1) a, b, c, d
-	
-	do i=1,3
-		read(8,*) xbox, ybox, zbox
-		write(9,fmt2) xbox, ybox, zbox
+	do i=1,5
+		read(8,fmt_all) all
+		write(9,fmt_all) all
 	end do
 	
 	! Write molecules above z
@@ -49,44 +42,42 @@ program cutz
 		end if
 	
 		if(label=="HOW") then
-			read(8,*) x,y,z
-			read(8,*) vx, vy, vz
-			read(8,*) ax, ay, az
+			read(8,fmt1) x,y,z
+			read(z,*) numbz
 			
-			if(z .gt. minz) then
-				write(9,fmt4) label, index
+			if(numbz .gt. minz) then
+				write(9,fmt2) label, index
 				index = index + 1
-				write(9,fmt3) x, y, z
-				write(9,fmt3) vx, vy, vz
-				write(9,fmt3) ax, ay, az
+				write(9,fmt1) x, y, z
+				
+				do i=1,2
+					read(8,fmt_all) all
+					write(9,fmt_all) all
+				end do
 				
 				do i=1,2
 					read(8,*) label
-					write(9,fmt4) label, index
+					write(9,fmt2) label, index
 					index = index + 1
 					
-					read(8,*) x, y, z
-					read(8,*) vx, vy, vz
-					read(8,*) ax, ay, az
-					write(9,fmt3) x, y, z
-					write(9,fmt3) vx, vy, vz
-					write(9,fmt3) ax, ay, az
+					do j=1,3
+						read(8,fmt_all) all
+						write(9,fmt_all) all
+					end do
 				end do
 				
 			else
-				do i=1,8
-					read(8,*) skip
+				do i=1,10
+					read(8,*)
 				end do
 			end if
 		else
-			write(9,fmt4) label, index
+			write(9,fmt2) label, index
 			index = index + 1
-			read(8,*) x, y, z
-			read(8,*) vx, vy, vz
-			read(8,*) ax, ay, az
-			write(9,fmt3) x, y, z
-			write(9,fmt3) vx, vy, vz
-			write(9,fmt3) ax, ay, az
+			do i=1,3
+				read(8,fmt_all) all
+				write(9,fmt_all) all
+			end do
 		end if
 	end do
 	
