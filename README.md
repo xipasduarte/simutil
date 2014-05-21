@@ -16,6 +16,7 @@ The folder names are self explanatory. None the less it might be useful to lay o
 The utilities uncompiled, FORTRAN 90, files are located in the ```source``` folder. A compiled version is found in the ```bin``` folder. As with the folder structure, the utilities are named in such a way to make it easy to grasp their functionality.
 
 * ```cfg2pdb``` - Convert a CONFIG file, from DL_POLY, into a PDB (Protein Data Bank) file to be used in RASMOL. (The output can, of course, be used elsewhere.)
+* ```cutz``` - Cut a CONFIG file from DL_POLY. Removes all water molecules below a given z value. Used to shorten the layers tickness when studying surface tensions.
 * ```gro2cfg``` - Convert a GROMACS ```.gro``` file into a DL_POLY CONFIG file.
 * ```surfangle``` - Determine the angle between molecules forming a monolayer on top of water, and the surface of the water. Can be easely fitted for other systems. (Uses the DL_POLY HISTORY file.)
 * ```surfplane``` - Determine the cluster of molecules that corresponde to the top surface in a simulation to obtain surface interactions/properties. (Uses the DL_POLY HISTORY file.)
