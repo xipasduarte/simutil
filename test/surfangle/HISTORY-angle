@@ -1,6 +1,6 @@
  Timestep average angles to surface (Degrees). Average over all simulation at the end of file.
-          50   54.322105    
-         100   54.351479    
-         150   54.101185    
-         200   54.007954    
- Average Angle   54.258255    
+          50             NaN
+         100             NaN
+         150             NaN
+         200             NaN
+ Average Angle             NaN
