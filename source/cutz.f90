@@ -10,9 +10,9 @@ program cutz
 	implicit none
 	! Variable declaration
 	character :: label*8, fmt1*12, fmt3*12
-	character (len=132) :: skip
-	integer :: index, i, status, a, b
-	real :: x, y, z, vx, vy, vz, ax, ay, az, minz, xbox, ybox, zbox
+	character (len=20) :: skip
+	integer :: index, i, status, a, b, c
+	real :: x, y, z, vx, vy, vz, ax, ay, az, minz, xbox, ybox, zbox, d
 
 	open(8, file="CONFIG", status="old", action="read") ! Open CONFIG
 	open(9, file="CONFIG-cutz", status="replace", action="write") ! Create output CONFIG
@@ -21,24 +21,25 @@ program cutz
 	write(*,*) "Provide the value of z from which to cut."
 	read(*,*) minz
 	
-	! File HEADER
-	read(8,*) skip
-	write(9,*) skip
-	
-	read(8,*) a, b
-	write(9,*) a, b
-	
-	do i=1,3
-		read(8,*) xbox, ybox, zbox
-		write(9,*) xbox, ybox, zbox
-	end do
-	
 	! Variable inicialization
 	fmt1 = ''
 	fmt3 = '(3(f20.12))'
 	
 	index = 1 
 	
+	! File HEADER
+	read(8,*) skip
+	write(9,*) skip
+	
+	read(8,*) a, b, c, d
+	write(9,*) a, b, c, d
+	
+	do i=1,3
+		read(8,*) xbox, ybox, zbox
+		write(9,fmt3) xbox, ybox, zbox
+	end do
+	
+	! Write molecules above z
 	do
 		read(8,*,iostat=status) label
 		if(status .eq. -1) then
