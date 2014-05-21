@@ -15,7 +15,7 @@ program surfangle
 	character (len=132) :: skip
 	integer :: index, nmol, status, frame, global_nmol, hist_slot, i
 	integer, dimension(9) :: hist
-	real :: x1, y1, z1, x2, y2, z2, global_angle, angles, angle, a, c
+	real :: x1, y1, z1, x2, y2, z2, global_angle, angles, angle, a, c, xbox, ybox
 	real, parameter :: pi = 4 * atan(1.0)
 	logical :: start
 
@@ -53,6 +53,10 @@ program surfangle
 			if(start) then
 				start = .FALSE.
 				
+				read(8,*) xbox
+				read(8,*) skip, ybox
+				read(8,*) skip
+				
 				write(10,*) "timestep    ", index
 			else
 				write(10,*) "timestep    ", index
@@ -73,12 +77,13 @@ program surfangle
 				angles = 0
 				nmol = 0
 				hist = 0
+			
+				read(8,*) skip
+				read(8,*) skip
+				read(8,*) skip
 			end if
-		
+			
 			frame = index
-			read(8,*) skip
-			read(8,*) skip
-			read(8,*) skip
 	
 		else if(label == "OH") then
 			read(8,*) x1, y1, z1
@@ -87,6 +92,25 @@ program surfangle
 			read(8,*) x2, y2, z2
 		
 			a = sqrt( (x2-x1)**2 + (y2-y1)**2 )
+			
+			if(abs(x1-x2) > (xbox/2)) then
+				if( x2 < 0 ) then
+					x2 = x2 + xbox
+				else          
+					x2 = x2 - xbox
+				end if
+				
+			end if
+			
+			if(abs(y1-y2) > (ybox/2)) then
+				if( y2 < 0 ) then
+					y2 = y2 + ybox
+				else
+					y2 = y2 - ybox
+				end if
+				
+			end if
+			
 			c = sqrt( (x2-x1)**2 + (y2-y1)**2 +(z2-z1)**2 )
 			
 			angle = acos(a/c)*360/2/pi
