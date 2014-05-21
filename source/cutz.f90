@@ -9,7 +9,7 @@ program cutz
 
 	implicit none
 	! Variable declaration
-	character :: label*8, fmt1*12, fmt3*12
+	character :: label*8, fmt1*30, fmt3*30, fmt2*30, fmt4*30
 	character (len=20) :: skip
 	integer :: index, i, status, a, b, c
 	real :: x, y, z, vx, vy, vz, ax, ay, az, minz, xbox, ybox, zbox, d
@@ -22,8 +22,10 @@ program cutz
 	read(*,*) minz
 	
 	! Variable inicialization
-	fmt1 = ''
-	fmt3 = '(3(f20.12))'
+	fmt1 = '(3I10.1, 4X, ES16.10E2)'
+	fmt2 = '(3(F20.12))'
+	fmt3 = '(3(f20.10))'
+	fmt4 = '(A8, I10)'
 	
 	index = 1 
 	
@@ -32,11 +34,11 @@ program cutz
 	write(9,*) skip
 	
 	read(8,*) a, b, c, d
-	write(9,*) a, b, c, d
+	write(9,fmt1) a, b, c, d
 	
 	do i=1,3
 		read(8,*) xbox, ybox, zbox
-		write(9,fmt3) xbox, ybox, zbox
+		write(9,fmt2) xbox, ybox, zbox
 	end do
 	
 	! Write molecules above z
@@ -52,7 +54,7 @@ program cutz
 			read(8,*) ax, ay, az
 			
 			if(z .gt. minz) then
-				write(9,*) label, index
+				write(9,fmt4) label, index
 				index = index + 1
 				write(9,fmt3) x, y, z
 				write(9,fmt3) vx, vy, vz
@@ -60,7 +62,7 @@ program cutz
 				
 				do i=1,2
 					read(8,*) label
-					write(9,*) label, index
+					write(9,fmt4) label, index
 					index = index + 1
 					
 					read(8,*) x, y, z
@@ -77,7 +79,7 @@ program cutz
 				end do
 			end if
 		else
-			write(9,*) label, index
+			write(9,fmt4) label, index
 			index = index + 1
 			read(8,*) x, y, z
 			read(8,*) vx, vy, vz
