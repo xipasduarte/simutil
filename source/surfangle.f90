@@ -55,7 +55,7 @@ program surfangle
 				
 				read(8,*) xbox
 				read(8,*) skip, ybox
-				read(8,*) skip
+				read(8,*)
 				
 				write(10,*) "timestep    ", index
 			else
@@ -78,9 +78,9 @@ program surfangle
 				nmol = 0
 				hist = 0
 			
-				read(8,*) skip
-				read(8,*) skip
-				read(8,*) skip
+				read(8,*)
+				read(8,*)
+				read(8,*)
 			end if
 			
 			frame = index
@@ -124,7 +124,7 @@ program surfangle
 			hist_slot = int(floor(angle/10))
 			hist(hist_slot) = hist(hist_slot) + 1 
 		else
-			read(8,*,iostat=status) skip
+			read(8,*,iostat=status)
 		end if
 		
 		if(status .eq. -1) then
