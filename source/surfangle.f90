@@ -11,13 +11,13 @@ program surfangle
 
 	implicit none
 	! Variable declaration
-	character(len=80) :: fmt, label
+	character(len=80) :: fmt='(f6.3)', label
 	character (len=132) :: skip
-	integer :: index, nmol, status, frame, global_nmol, hist_slot, i
+	integer :: index, nmol=0, status, frame, global_nmol=0, hist_slot, i
 	integer, dimension(9) :: hist
-	real :: x1, y1, z1, x2, y2, z2, global_angle, angles, angle, a, c, xbox, ybox
+	real :: x1, y1, z1, x2, y2, z2, global_angle=0., angles=0., angle, a, c, xbox, ybox
 	real, parameter :: pi = 4 * atan(1.0)
-	logical :: start
+	logical :: start=.true.
 
 	open(8, file="HISTORY", status="old", action="read") ! Open HISTORY
 	open(9, file="HISTORY-angle", status="replace", action="write") ! Create and open output for average angles
@@ -28,16 +28,8 @@ program surfangle
 	write(9,*) "Timestep average angles to surface (Degrees). Average over all simulation at the end of file."
 	write(10,*) "Angles to surface (Degrees)."
 	!write(11,*) "ts          angle       frequency   "
-
-	! Variable inicialization
-	start = .TRUE.
-	global_angle = 0
-	global_nmol = 0
 	
-	angles = 0
-	nmol = 0
-	
-	hist = 0
+	hist=0
 	
 	! Discard HEADER
 	read(8,*) skip; read(8,*) skip;
@@ -51,7 +43,7 @@ program surfangle
 	
 		if(label=="timestep") then
 			if(start) then
-				start = .FALSE.
+				start = .false.
 				
 				read(8,*) xbox
 				read(8,*) skip, ybox
@@ -86,14 +78,15 @@ program surfangle
 			frame = index
 	
 		else if(label == "OH") then
-			read(8,*) x1, y1, z1
+			read(8,'((2X,ES11.4E3),2(1X,ES11.4E3))') x1, y1, z1
 	
 		else if(label == "CT") then
-			read(8,*) x2, y2, z2
+			read(8,'((2X,ES11.4E3),2(1X,ES11.4E3))') x2, y2, z2
 		
 			a = sqrt( (x2-x1)**2 + (y2-y1)**2 )
 			
 			if(abs(x1-x2) > (xbox/2)) then
+				write(*,*) x1, x2, xbox
 				if( x2 < 0 ) then
 					x2 = x2 + xbox
 				else          
