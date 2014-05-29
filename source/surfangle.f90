@@ -111,14 +111,14 @@ program surfangle
 			d = abs(x2-x1)
 			
 			ori_angle = acos(d/c)*360/2/pi
-			if (x2 > 0 .and. y2 < 0) then
+			if (x2 > x1 .and. y2 < y1) then
 				ori_angle = 360 - ori_angle
 			end if
-			if (x2 < 0) then
-				if(y2 > 0) then
+			if (x2 < x1) then
+				if(y2 > y1) then
 					ori_angle = 180 - ori_angle
 				end if
-				if(y2 < 0) then
+				if(y2 < y1) then
 					ori_angle = 180 + ori_angle
 				end if
 			end if			
