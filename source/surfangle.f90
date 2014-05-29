@@ -15,7 +15,7 @@ program surfangle
 	character (len=132) :: skip
 	integer :: index, nmol=0, status, frame, global_nmol=0, hist_slot, i
 	integer, dimension(9) :: hist
-	real :: x1, y1, z1, x2, y2, z2, global_angle=0., angles=0., angle, a, c, xbox, ybox
+	real :: x1, y1, z1, x2, y2, z2, global_angle=0., angles=0., angle, ori_angle, a, c, d, xbox, ybox
 	real, parameter :: pi = 4 * atan(1.0)
 	logical :: start=.true.
 
@@ -85,6 +85,7 @@ program surfangle
 		
 			a = sqrt( (x2-x1)**2 + (y2-y1)**2 )
 			
+			! Boundary conditions correction
 			if(abs(x1-x2) > (xbox/2)) then
 				write(*,*) x1, x2, xbox
 				if( x2 < 0 ) then
@@ -106,12 +107,28 @@ program surfangle
 			
 			c = sqrt( (x2-x1)**2 + (y2-y1)**2 +(z2-z1)**2 )
 			
+			! Calculate orientation angle
+			d = abs(x2-x1)
+			
+			ori_angle = acos(d/c)*360/2/pi
+			if (x2 > 0 .and. y2 < 0) then
+				ori_angle = 360 - ori_angle
+			end if
+			if (x2 < 0) then
+				if(y2 > 0) then
+					ori_angle = 180 - ori_angle
+				end if
+				if(y2 < 0) then
+					ori_angle = 180 + ori_angle
+				end if
+			end if			
+			
 			angle = acos(a/c)*360/2/pi
 			angles = angles + angle
 			nmol = nmol + 1
 			
 			! Write to all angles
-			write(10,*) index, angle
+			write(10,*) index, angle, ori_angle
 			
 			! Create histogram
 			hist_slot = int(floor(angle/10))
