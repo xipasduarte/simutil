@@ -11,7 +11,7 @@ program surfangle
 
 	implicit none
 	! Variable declaration
-	character(len=80) :: fmt='(f6.3)', label
+	character :: fmt*6='(f6.3)', label*8, top*8, bottom*8
 	character (len=132) :: skip
 	integer :: index, nmol=0, status, frame, global_nmol=0, hist_slot, i
 	integer, dimension(9) :: hist
@@ -29,6 +29,9 @@ program surfangle
 	write(10,*) "Angles to surface (Degrees)."
 	!write(11,*) "ts          angle       frequency   "
 	
+	! Variable initialization
+	top = "CT"
+	bottom = "OH"
 	hist=0
 	
 	! Discard HEADER
@@ -77,10 +80,10 @@ program surfangle
 			
 			frame = index
 	
-		else if(label == "OH") then
+		else if(label == bottom) then
 			read(8,'((2X,ES11.4E3),2(1X,ES11.4E3))') x1, y1, z1
 	
-		else if(label == "CT") then
+		else if(label == top) then
 			read(8,'((2X,ES11.4E3),2(1X,ES11.4E3))') x2, y2, z2
 		
 			a = sqrt( (x2-x1)**2 + (y2-y1)**2 )
