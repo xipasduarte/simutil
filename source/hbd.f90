@@ -13,26 +13,21 @@ program hbd
 	integer :: n, v
 	parameter ( n=600, v=8 )
 	real, dimension(n*v) :: hbarray
-	integer :: nmol, status, i, j, k, index
-	character :: label*8, skip*80
-	real :: xO=0, yO=0, zO=0, xH=0, yH=0, zH=0, rhb, distOH, distHO, oh_hb, o_hb, h_hb, no_hb, ts=0.0
+	integer :: nmol, status=0, i, j, k, index
+	character :: label*8, skip*80, arg_name*20
+	real :: xO=0, yO=0, zO=0, xH=0, yH=0, zH=0, rhb=2.67, distOH, distHO, oh_hb=0.0, o_hb=0.0, h_hb=0.0,&
+	no_hb=0.0, ts=0.0
 	
 	open(8, file="HISTORY", status="old", action="read")
 	open(9, file="HISTORY-hbd", status="replace", action="write") ! File to write output
-	
-	rhb = 2.67
-	status = 0
-	oh_hb = 0
-	h_hb = 0
-	o_hb = 0
-	no_hb = 0
 	
 	! Removes the first two header lines
 	read(8,*)
 	read(8,*)
 	
-	! Count how many neighbors each point has
-	! 5 element arrays: (1) index; (2) neighbours; (3,4,5) x,y and z coord;
+	! Get labels from command line
+	
+	
 	do	
 		read(8,*,iostat=status) label, index
 		
@@ -62,10 +57,10 @@ program hbd
 			ts = ts+1
 			nmol = 0
 		
-		else if(label=="HOY") then ! Get hydrogen coord
+		else if(label=="HOT") then ! Get hydrogen coord
 			read(8,*) xH, yH, zH
 			
-		else if(label=="OHY") then ! Get oxygen coord
+		else if(label=="OHT") then ! Get oxygen coord
 			read(8,*) xO, yO, zO
 			
 		else
@@ -103,7 +98,7 @@ program hbd
 				
 				if(hbarray((i-1)*v+2)==0) then
 					distOH = sqrt( (hbarray((i-1)*v+6)-xH)**2 + (hbarray((i-1)*v+7)-yH)**2 + (hbarray((i-1)*v+8)-zH)**2 )
-					if(distHO < rhb) then
+					if(distOH < rhb) then
 						hbarray((i-1)*v+2) = 1
 						hbarray(nmol*v+1) = 1
 					end if
