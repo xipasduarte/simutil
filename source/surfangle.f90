@@ -139,11 +139,11 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	do n=1,natoms
 		read(8,*) label
 		
-		do i=1,types+1
+		outer: do i=1,types+1
 			if(i==types+1) then
 				read(8,*)
 				
-				EXIT
+				exit
 			end if
 			do j=1,2
 				if(label==labels(i,j)) then
@@ -154,12 +154,10 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 						coord(i+int(ceiling(real(i)/2)),2), coord(i+int(ceiling(real(i)/2)),3)
 					end if
 					check(i,j) = .true.
-					GOTO 10
+					exit outer
 				end if
 			end do
 		end do
-		
-		10 continue
 		
 		do k=1,types
 			if(count(check(k,1:2))==2) then
