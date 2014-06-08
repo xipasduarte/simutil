@@ -3,6 +3,7 @@
 ! Created on: Jun 2, 2014
 ! Author: Pedro Duarte and Pedro Morgado
 ! License: MIT License
+! Version: 0.1.1
 ! Description: Determine the distribution of hydrogen bonds in mixtures – both O and H participate
 ! in hydrogen bonds; only H; only O; and none (the molecule doesn't make any hydrogen bonds).
 
@@ -11,9 +12,32 @@ program hbd
 	implicit none
 	! Variable declaration
 	integer, parameter :: molecules=500
-	integer :: status=0, index, natoms
-	character :: label*8, skip, labels(2)*8
+	integer :: narg, i, status=0, index, natoms
+	character :: arg*20, label*8, skip, labels(2)*8
 	real :: hb_count(4), ts=0.0, box(3)
+	
+	! Handle command line arguments
+	! Check if any arguments are found
+	narg = command_argument_count()
+	! Loop over the arguments
+	if(narg>0)then
+		! loop across options
+		do i=1,narg
+			call get_command_argument(i,arg)
+			select case(adjustl(arg))
+				case("--help", "-h")
+					write(*,'(A33,(/))') "hbd (Hydrogen Bond Distribution)"
+					write(*,*) "Determine the types of hydrogen bonding in mixtures."
+					stop
+				case("--version", "-v")
+					write(*,*) "v0.1.1"
+					stop
+				case default
+					write(*,*)"Option unknown: ", adjustl(arg)
+					stop
+			end select
+		end do
+	end if
 	
 	open(8, file="HISTORY", status="old", action="read")
 	open(9, file="HISTORY-hbd", status="replace", action="write") ! File to write output

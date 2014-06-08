@@ -3,6 +3,7 @@
 ! Created on: Apr 28, 2014
 ! Author: Pedro Duarte and Miguel Teixeira
 ! License: MIT License
+! Version: 0.3.1
 ! Description: Calculate the angle from the plane on the base of the 
 ! molecule, to a mean segment representing the molecule. Uses DL_POLY
 ! HISTORY files as input.
@@ -31,11 +32,11 @@ program surfangle
 	write(11,'(A80,(/),A12,A12,9(I12))') "Angle interval","timestep","molecule",10,20,30,40,50,60,70,80,90
 	
 	! Handle command line arguments
-	!Check if any arguments are found
+	! Check if any arguments are found
 	narg = command_argument_count()
-	!Loop over the arguments
+	! Loop over the arguments
 	if(narg>0)then
-		!loop across options
+		! loop across options
 		do i=1,narg
 			call get_command_argument(i,arg)
 			select case(adjustl(arg))
@@ -52,6 +53,9 @@ program surfangle
 						end do
 					end do
 					EXIT
+				case("--version", "-v")
+					write(*,*) "v0.3.1"
+					stop
 				case("--help","-h")
 write(*,'(A10,(/))') "Surfangle"
 write(*,*) "This utility calculates the angle to the surface of molecules forming a monolayer"
@@ -67,7 +71,7 @@ write(*,'(A33,(/),A46,A82)') "Example: --labels OH CT OHA CTA;","Executes the pr
 "one with the base at OH and top at CT, the second with base at OHA and top at CTA."
 stop
 				case default
-					write(*,*)"Option unknown:", adjustl(arg)
+					write(*,*)"Option unknown: ", adjustl(arg)
 					stop
 			end select
 		end do

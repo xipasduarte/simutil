@@ -3,19 +3,40 @@
 ! Created on: Mar 9, 2012
 ! Author: Pedro Duarte and Pedro Morgado
 ! License: MIT License
+! Version: 0.2.1
 ! Description: Convert a GROMACS .gro file into a DL Poly CONFIG file.
 
 program gro2cfg
 
 	implicit none
 	! Variable declaration
-	character(len=80) :: filename, outfilename, name, molecule, fmt, fmt_box
-	character (len=132) :: skip
-	character(len=8):: atom
-	integer :: line, totlines, indexno
-	real :: xbox, ybox, zbox, ax, ay, az, nullval
-        nullval=0
-
+	character :: arg*20, filename*80, outfilename*80, name*20, molecule*8, fmt*20, fmt_box*20, skip, atom*8
+	integer :: narg, i, line, totlines, indexno
+	real :: xbox, ybox, zbox, ax, ay, az, nullval=0.
+	
+	! Handle command line arguments
+	! Check if any arguments are found
+	narg = command_argument_count()
+	! Loop over the arguments
+	if(narg>0)then
+		! loop across options
+		do i=1,narg
+			call get_command_argument(i,arg)
+			select case(adjustl(arg))
+				case("--help", "-h")
+					write(*,'(A33,(/))') "gro2cfg"
+					write(*,*) "Transform .gro (GROMACS) into a CONFIG file (DL_POLY)."
+					stop
+				case("--version", "-v")
+					write(*,*) "v0.2.1"
+					stop
+				case default
+					write(*,*)"Option unknown: ", adjustl(arg)
+					stop
+			end select
+		end do
+	end if
+	
 	!Ask user for the path to the file to convert and output filename
 	!print *, "Enter file path without the file (can be relative to this file location):"
 	!read *, filepath
@@ -62,13 +83,13 @@ program gro2cfg
 	write(9,'(A80)') name
 	write(9,*) "        0","         1"
 	write(9,fmt_box) xbox, nullval, nullval
-        write(9,fmt_box) nullval, ybox, nullval
-        write(9,fmt_box) nullval, nullval, zbox
+    write(9,fmt_box) nullval, ybox, nullval
+    write(9,fmt_box) nullval, nullval, zbox
 
 	!File BODY
 	do line=1, totlines
         if (line == 1 .or. line == 2 .or. line == totlines) then
-            read(8,*) skip
+            read(8,*)
         else
             read(8,*) molecule, atom, indexno, ax, ay, az
             ! Convert to Angstroms

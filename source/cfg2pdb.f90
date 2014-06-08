@@ -4,6 +4,7 @@
 ! Author: Zé Nuno
 ! Revision Author: Pedro Duarte
 ! License: MIT License
+! Version: 0.2.1
 ! Description: Converts a DL_POLY configuration file 
 ! into a rasmol readable pdb file.
 
@@ -11,9 +12,32 @@ program cfg2pdb
 
 	implicit none
 
-	character :: header*80, atmnam*4, fmt_header*20
+	character :: arg*20, header*80, atmnam*4, fmt_header*20
 	real :: x, y, z
-	integer :: nmol, levcnf, imcon, status, i
+	integer :: narg, nmol, levcnf, imcon, status, i
+	
+	! Handle command line arguments
+	! Check if any arguments are found
+	narg = command_argument_count()
+	! Loop over the arguments
+	if(narg>0)then
+		! loop across options
+		do i=1,narg
+			call get_command_argument(i,arg)
+			select case(adjustl(arg))
+				case("--help", "-h")
+					write(*,'(A33,(/))') "cfg2pdb"
+					write(*,*) "Create a PDB file from a CONFIG to use in RASMOL."
+					stop
+				case("--version", "-v")
+					write(*,*) "v0.2.1"
+					stop
+				case default
+					write(*,*)"Option unknown: ", adjustl(arg)
+					stop
+			end select
+		end do
+	end if
 
 	open(2, file='CONFIG', status="old", action="read")
 	open(3, file='RASMOL', status="replace", action="write")
