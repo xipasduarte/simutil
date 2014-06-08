@@ -161,7 +161,7 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 					exit outer
 				end if
 			end do
-		end do
+		end do outer
 		
 		do k=1,types
 			if(count(check(k,1:2))==2) then
