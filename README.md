@@ -3,7 +3,7 @@ simutil
 
 Scripts and small utilitary programs to assist in simulations (using DL_POLY, GROMACS or Towhee). The utilitaries are based on a specific program's output or input files. The tools are used to aid in the research carried out at Instituto Superior Técnico (IST), Universidade de Lisboa, Portugal.
 
-Every tool is designed to work with as little input as possible. Idealy the programs run without the need to provide any input, the tool runs taking what it need from the folder in which it is called.
+Every tool is designed to work with as little parameters and arguments as possible. Idealy the programs run without the need to provide any, the tool runs taking what it needs from the folder in which it is called.
 
 ## Folder structure
 The folder names are self explanatory. None the less it might be useful to lay out the reasoning behind it.
