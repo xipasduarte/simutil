@@ -3,17 +3,40 @@
 ! Created on: May 21, 2014
 ! Author: Pedro Duarte and Miguel Teixeira
 ! License: MIT License
+! Version: 0.1.1
 ! Description: Remove all molecules below a defined z value.
 
 program cutz
 
 	implicit none
 	! Variable declaration
-	character :: label*8, fmt_all*5, fmt1*30, fmt2*30, all*60
-	character (len=16) :: x, y, z
-	integer :: index, i, j, status
+	character :: arg*20, label*8, fmt_all*5, fmt1*30, fmt2*30, all*60, x*16, y*16, z*16
+	integer :: narg, index, i, j, status
 	real :: minz, numbz
-
+	
+	! Handle command line arguments
+	! Check if any arguments are found
+	narg = command_argument_count()
+	! Loop over the arguments
+	if(narg>0)then
+		! loop across options
+		do i=1,narg
+			call get_command_argument(i,arg)
+			select case(adjustl(arg))
+				case("--help", "-h")
+					write(*,'(A33,(/))') "cutz"
+					write(*,*) "Remove water molecules below a certain z coordinate value."
+					stop
+				case("--version", "-v")
+					write(*,*) "v0.1.1"
+					stop
+				case default
+					write(*,*)"Option unknown: ", adjustl(arg)
+					stop
+			end select
+		end do
+	end if
+	
 	open(8, file="CONFIG", status="old", action="read") ! Open CONFIG
 	open(9, file="CONFIG-cutz", status="replace", action="write") ! Create output CONFIG
 	

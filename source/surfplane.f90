@@ -3,6 +3,7 @@
 ! Created on: Apr 30, 2014
 ! Author: Pedro Duarte and Miguel Teixeira
 ! License: MIT License
+! Version: 0.5.1
 ! Description: Determine the surface cluster of water molecules on the surface
 ! in DL_POLY simulations.
 
@@ -13,9 +14,32 @@ program surfplane
 	integer :: n
 	parameter ( n=4000 )
 	real, dimension(n*5) :: plane
-	integer :: nmol, status, i, j, k, index
-	character :: label*8, skip*80
+	integer :: narg, nmol, status, i, j, k, index
+	character :: arg*20, label*8, skip*80
 	real :: x, y, z, rW, dist, maxz, viz
+	
+	! Handle command line arguments
+	! Check if any arguments are found
+	narg = command_argument_count()
+	! Loop over the arguments
+	if(narg>0)then
+		! loop across options
+		do i=1,narg
+			call get_command_argument(i,arg)
+			select case(adjustl(arg))
+				case("--help", "-h")
+					write(*,'(A10,(/))') "Surfplane"
+					write(*,*) "Determine the colection of molecules at the surface of a water film."
+					stop
+				case("--version", "-v")
+					write(*,*) "v0.5.1"
+					stop
+				case default
+					write(*,*)"Option unknown: ", adjustl(arg)
+					stop
+			end select
+		end do
+	end if
 	
 	open(8, file="HISTORY", status="old", action="read")
 	open(9, file="HISTORY-plane", status="replace", action="write") ! File to write output
