@@ -211,7 +211,7 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 				write(10,'(A12,2(f12.4))') trim(labels(k,1))//"-"//trim(labels(k,2)), angle, ori_angle
 			
 				! Create histogram
-				hist_slot = int(floor(angle/10))
+				hist_slot = int(floor(angle/10)) + 1
 				frame_hist(k,hist_slot) = frame_hist(k,hist_slot) + 1
 			end if
 		end do
