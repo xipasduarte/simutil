@@ -19,17 +19,6 @@ program surfangle
 	character :: arg*20, label*8, skip
 	integer :: narg, index, status, frame, i, j, k, natoms, types
 	real :: box(3), ts=0.
-
-	open(8, file="HISTORY", status="old", action="read") ! Open HISTORY
-	open(9, file="HISTORY-angle", status="replace", action="write") ! Create and open output for average angles
-	open(10, file="HISTORY-angles", status="replace", action="write") ! Create and open output for all angles
-	open(11, file="HISTORY-hist", status="replace", action="write") ! Create and open output for histograms
-	
-	! Files HEADER's
-	write(9,*) "Timestep average angles to surface (Degrees). Average over all simulation at the end of file."
-	write(10,*) "Angles to surface (surf) and orientation angles (ori). Angles are all in Degrees."
-	write(11,*) "Angles distribution frequency (%)."
-	write(11,'(A80,(/),A12,A12,9(I12))') "Angle interval","timestep","molecule",10,20,30,40,50,60,70,80,90
 	
 	! Handle command line arguments
 	! Check if any arguments are found
@@ -84,6 +73,21 @@ stop
 	allocate(hist(types, 9), global_angle(types), global_nmol(types))
 	hist = 0; global_angle = 0; global_nmol = 0;
 	
+	! File opening properties
+	open(8, file="HISTORY", status="old", action="read") ! Open HISTORY
+	open(9, file="HISTORY-angle", status="replace", action="write") ! Create and open output for average angles
+	open(10, file="HISTORY-angles", status="replace", action="write") ! Create and open output for all angles
+	open(11, file="HISTORY-hist", status="replace", action="write") ! Create and open output for histograms
+	open(12, file="HISTORY-cris", status="replace", action="write") ! Create and open output for cristalinity
+	
+	! Files HEADER's
+	write(9,*) "Timestep average angles to surface (Degrees). Average over all simulation at the end of file."
+	write(10,*) "Angles to surface (surf) and orientation angles (ori). Angles are all in Degrees."
+	write(11,*) "Angles distribution frequency (%)."
+	write(11,'(A80,(/),A12,A12,9(I12))') "Angle interval","timestep","molecule",10,20,30,40,50,60,70,80,90
+	write(12,'(A12,2X,A8)') "timestep", "cris"
+	
+	
 	! Discard HEADER
 	read(8,*); read(8,*) skip, skip, natoms;
 	
@@ -118,7 +122,7 @@ stop
 		write(11,'(12X,A12,9(f12.3))') trim(labels(i,1))//"-"//trim(labels(i,2)), hist(i,:)
 	end do
 	
-	close(8); close(9); close(10);
+	close(8); close(9); close(10); close(11); close(12);
 
 end program surfangle
 
@@ -129,16 +133,19 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	character :: labels(types,2)*8
 	real :: box(3), global_angle(types), global_nmol(types), hist(types,9)
 	! Subroutine variables
-	integer :: i, j, k, n, frame_hist(types,9), hist_slot
+	real, allocatable :: mol(:), temp(:)
+	integer :: i, j, k, n, frame_hist(types,9), hist_slot, comb
 	character :: label*8, skip
-	real :: coord(types*2,3), angle, angles(types), a, c, d, ori_angle, nmol(types)
+	real :: coord(types*2,3), angle, angles(types), a, c, d, ori_angle, nmol(types), u(3), sup=0.0, cris
 	real, parameter :: pi = 4 * atan(1.0)
 	logical :: check(types,2)
 	
+	! Initialize variables
 	check = .false.
 	angles = 0
 	nmol = 0
 	frame_hist = frame_hist*0
+	allocate(mol(0)) ! start with empty array
 	
 	do n=1,natoms
 		read(8,*) label
@@ -167,8 +174,11 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 			if(count(check(k,1:2))==2) then
 				check(k,1:2) = .false.
 				
-				a = sqrt( (coord(k+1,1)-coord(k,1))**2 + (coord(k+1,2)-coord(k,2))**2 )
-			
+				! Increment mol array
+				allocate(temp(size(mol)+4))
+				temp(1:size(mol)) = mol
+				call move_alloc(temp, mol)
+				
 				! Boundary conditions correction
 				if(abs(coord(k,1)-coord(k+1,1)) > (box(1)/2)) then
 					if( coord(k+1,1) < 0 ) then
@@ -185,13 +195,34 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 						coord(k+1,2) = coord(k+1,2) - box(2)
 					end if
 				end if
-			
-				c = sqrt( (coord(k+1,1)-coord(k,1))**2 + (coord(k+1,2)-coord(k,2))**2 +(coord(k+1,3)-coord(k,3))**2 )
 				
-				! Calculate orientation angle
-				d = abs(coord(k+1,1)-coord(k,1))
+				! Vectorize and normalize
+				do j=1,3
+					u(j) = coord(k+1,j)-coord(k,j)
+					if(abs(u(j)) > abs(sup)) then
+						sup = u(j)
+					end if
+				end do
+				do j=1,3
+					u(j) = u(j)/sup
+				end do
 				
-				ori_angle = acos(d/a)*360/2/pi
+				! Cristlinity carculation
+				do i=1,size(mol),4
+					if(mol(i) .ne. 0) then
+						allocate(temp(3))
+						temp = mol(i+1:i+3)
+						cris = cris + dot_product(temp,u)
+						deallocate(temp)
+					else
+						mol(i) = k
+						mol(i+1:i+3) = u
+					end if
+				end do		
+						 
+				
+				! Calculate angles
+				ori_angle = acos(dot_product(u,(/ 1,0,0 /)))*360/2/pi
 				
 				if(coord(k+1,1)>coord(k,1) .and. coord(k+1,2)<coord(k,2)) then
 					ori_angle = 360-ori_angle
@@ -203,7 +234,7 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 					end if
 				end if
 			
-				angle = acos(a/c)*360/2/pi
+				angle = acos(dot_product(u,(/ 0,0,1 /)))*360/2/pi
 				angles(k) = angles(k) + angle
 				nmol(k) = nmol(k) + 1
 			
@@ -231,5 +262,20 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	global_angle = global_angle + angles
 	global_nmol = global_nmol + nmol
 	
+	! Write Cristalinity
+	write(12,"(I12,2X,f8.6)") index, cris/comb(size(mol)/4)
+	deallocate(mol)
 end subroutine calc_angles
+
+! Calculate the number of combinations
+function comb(n) result(r)
+	integer, intent(in) :: n
+	integer :: r, i
+	
+	r = 0
+	do i=1,n
+		r = r+(i-1)
+	end do
+	
+end function comb
 		
