@@ -134,9 +134,9 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	real :: box(3), global_angle(types), global_nmol(types), hist(types,9)
 	! Subroutine variables
 	real, allocatable :: mol(:), temp(:)
-	integer :: i, j, k, n, frame_hist(types,9), hist_slot, comb
+	integer :: i, j, k, n, frame_hist(types,9), comb
 	character :: label*8, skip
-	real :: coord(types*2,3), angle, angles(types), a, c, d, ori_angle, nmol(types), u(3), sup=0.0, cris
+	real :: coord(types*2,3), angle, angles(types), a, c, d, ori_angle=0.0, nmol(types), u(3), sup=0.0, cris
 	real, parameter :: pi = 4 * atan(1.0)
 	logical :: check(types,2)
 	
@@ -145,6 +145,7 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	angles = 0
 	nmol = 0
 	frame_hist = frame_hist*0
+	cris = 0
 	allocate(mol(0)) ! start with empty array
 	
 	do n=1,natoms
@@ -200,14 +201,14 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 				do j=1,3
 					u(j) = coord(k+1,j)-coord(k,j)
 					if(abs(u(j)) > abs(sup)) then
-						sup = u(j)
+						sup = abs(u(j))
 					end if
 				end do
 				do j=1,3
 					u(j) = u(j)/sup
 				end do
 				
-				! Cristlinity carculation
+				! Cristlinity calculation
 				do i=1,size(mol),4
 					if(mol(i) .ne. 0) then
 						allocate(temp(3))
@@ -242,8 +243,11 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 				write(10,'(A12,2(f12.4))') trim(labels(k,1))//"-"//trim(labels(k,2)), angle, ori_angle
 			
 				! Create histogram
-				hist_slot = int(floor(angle/10)) + 1
-				frame_hist(k,hist_slot) = frame_hist(k,hist_slot) + 1
+				do i=1,9
+					if(angle .lt. i*10) then
+						frame_hist(k,i) = frame_hist(k,i) + 1
+					end if
+				end do
 			end if
 		end do
 	end do
@@ -263,8 +267,8 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	global_nmol = global_nmol + nmol
 	
 	! Write Cristalinity
-	write(12,"(I12,2X,f8.6)") index, cris/comb(size(mol)/4)
-	deallocate(mol)
+	write(12,"(I12,2X)", advance="no") index; write(12,*) cris/comb(size(mol)/4);
+	deallocate(mol); cris = 0;
 end subroutine calc_angles
 
 ! Calculate the number of combinations
@@ -278,4 +282,3 @@ function comb(n) result(r)
 	end do
 	
 end function comb
-		
