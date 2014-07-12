@@ -104,7 +104,8 @@ stop
 			read(8,*) skip, box(2)
 			read(8,*) skip, skip, box(3)
 			
-			write(10,'(3(A12),(/),I12)') "timestep", "surf", "ori", index
+			write(10,'(9(A12),(/),I12)') "timestep", "surf", "ori", "u(x)", "u(y)", "u(z)",&
+			"v(x)", "v(y)", "v(z)", index
 			
 			call calc_angles(index, natoms, labels, types, box, global_nmol, global_angle, hist)
 		end if
@@ -128,29 +129,36 @@ end program surfangle
 
 subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_angle, hist)
 	implicit none
+	
 	! Variables comming from outside
 	integer :: types, index, natoms
 	character :: labels(types,2)*8
 	real :: box(3), global_angle(types), global_nmol(types), hist(types,9)
+	
 	! Subroutine variables
+	! Arrays
 	real, allocatable :: mol(:), temp(:)
-	integer :: i, j, k, n, frame_hist(types,9), comb
-	character :: label*8, skip
-	real :: coord(types*2,3), angle, angles(types), a, c, d, ori_angle=0.0, nmol(types), u(3), sup=0.0, cris
-	real, parameter :: pi = 4 * atan(1.0)
+	integer :: frame_hist(types,9)
+	real :: u(3), v(3), ex(3)=[1,0,0], ez(3)=[0,0,1], nmol(types), angles(types), coord(types*2,3)
 	logical :: check(types,2)
+	! Single Value
+	integer :: i, j, k, n, comb
+	character :: label*8, skip
+	real :: angle, ori_angle=0.0, tam, cris
+	! Parameters
+	real, parameter :: pi = 4 * atan(1.0)
 	
 	! Initialize variables
 	check = .false.
 	angles = 0
 	nmol = 0
 	frame_hist = frame_hist*0
-	cris = 0
+	cris = 0;
 	allocate(mol(0)) ! start with empty array
 	
 	do n=1,natoms
 		read(8,*) label
-		
+			
 		outer: do i=1,types+1
 			if(i==types+1) then
 				read(8,*)
@@ -177,6 +185,7 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 				
 				! Increment mol array
 				allocate(temp(size(mol)+4))
+				temp(size(mol)+1:size(temp)) = 0
 				temp(1:size(mol)) = mol
 				call move_alloc(temp, mol)
 				
@@ -198,49 +207,39 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 				end if
 				
 				! Vectorize and normalize
+				u = 0
+				tam = 0
 				do j=1,3
-					u(j) = coord(k+1,j)-coord(k,j)
-					if(abs(u(j)) > abs(sup)) then
-						sup = abs(u(j))
-					end if
+					u(j) = coord(k*2,j)-coord(k*2-1,j)
 				end do
+				tam = sqrt(sum(u*u))
 				do j=1,3
-					u(j) = u(j)/sup
+					u(j) = u(j)/tam
 				end do
+				v = (/ u(1:2),0. /)
 				
 				! Cristlinity calculation
-				do i=1,size(mol),4
-					if(mol(i) .ne. 0) then
-						allocate(temp(3))
-						temp = mol(i+1:i+3)
-						cris = cris + dot_product(temp,u)
-						deallocate(temp)
-					else
-						mol(i) = k
-						mol(i+1:i+3) = u
-					end if
-				end do		
+				mol(size(mol)-3) = k
+				mol(size(mol)-2:size(mol)) = u
+				do i=1,size(mol)-4,4
+					write(*,'(7(f9.4))') cris, mol(i+1:i+3),u
+					cris = cris + dot_product(mol(i+1:i+3),u)
+				end do
 						 
 				
 				! Calculate angles
-				ori_angle = acos(dot_product(u,(/ 1,0,0 /)))*360/2/pi
+				ori_angle = acos(dot_product(v,ex))*360/2/pi
 				
-				if(coord(k+1,1)>coord(k,1) .and. coord(k+1,2)<coord(k,2)) then
-					ori_angle = 360-ori_angle
-				else if( coord(k,1) > coord(k+1,1) ) then
-					if( coord(k,2) > coord(k+1,2) ) then
-						ori_angle = ori_angle + 180
-					else if( coord(k,2) < coord(k+1,2) ) then
-						ori_angle = ori_angle + 180
-					end if
+				if(u(2) .lt. 0) then
+					ori_angle = ori_angle + 180
 				end if
 			
-				angle = acos(dot_product(u,(/ 0,0,1 /)))*360/2/pi
+				angle = acos(dot_product(u,ez))*360/2/pi
 				angles(k) = angles(k) + angle
 				nmol(k) = nmol(k) + 1
 			
 				! Write to all angles
-				write(10,'(A12,2(f12.4))') trim(labels(k,1))//"-"//trim(labels(k,2)), angle, ori_angle
+				write(10,'(A12,8(f12.4))') trim(labels(k,1))//"-"//trim(labels(k,2)),angle,ori_angle,u,v
 			
 				! Create histogram
 				do i=1,9
@@ -267,8 +266,8 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	global_nmol = global_nmol + nmol
 	
 	! Write Cristalinity
-	write(12,"(I12,2X)", advance="no") index; write(12,*) cris/comb(size(mol)/4);
-	deallocate(mol); cris = 0;
+	write(12,"(I12,2X)",advance="no") index;write(12,*) cris/comb(size(mol)/4);
+	deallocate(mol)
 end subroutine calc_angles
 
 ! Calculate the number of combinations
