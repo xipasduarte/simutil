@@ -137,14 +137,15 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	
 	! Subroutine variables
 	! Arrays
-	real, allocatable :: mol(:), temp(:)
+	real, allocatable :: mol(:), temp(:), rdf(:)
 	integer :: frame_hist(types,9)
-	real :: u(3), v(3), ex(3)=[1,0,0], ez(3)=[0,0,1], nmol(types), angles(types), coord(types*2,3)
+	real :: u(3), v(3), ex(3)=[1,0,0], ez(3)=[0,0,1], nmol(types), angles(types), coord(types*2,3),&
+	cm(2)=[0,0]
 	logical :: check(types,2)
 	! Single Value
 	integer :: i, j, k, n, comb
 	character :: label*8, skip
-	real :: angle, ori_angle=0.0, tam, cris
+	real :: angle, ori_angle=0.0, tam, cris, cm_d
 	! Parameters
 	real, parameter :: pi = 4 * atan(1.0)
 	
@@ -188,6 +189,11 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 				temp(size(mol)+1:size(temp)) = 0
 				temp(1:size(mol)) = mol
 				call move_alloc(temp, mol)
+				! Increment rdf array
+				allocate(temp(size(rdf)+3))
+				temp(size(rdf)+1:size(temp)) = 0
+				temp(1:size(rdf)) = rdf
+				call move_alloc(temp, rdf)
 				
 				! Boundary conditions correction
 				if(abs(coord(k,1)-coord(k+1,1)) > (box(1)/2)) then
@@ -212,6 +218,11 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 				do j=1,3
 					u(j) = coord(k*2,j)-coord(k*2-1,j)
 				end do
+				
+				! RDF
+				rdf(size(rdf)-2) = k
+				rdf(size(rdf)-1:size(rdf)) = u(1:2)/3
+				
 				tam = sqrt(sum(u*u))
 				do j=1,3
 					u(j) = u(j)/tam
@@ -222,7 +233,6 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 				mol(size(mol)-3) = k
 				mol(size(mol)-2:size(mol)) = u
 				do i=1,size(mol)-4,4
-					write(*,'(7(f9.4))') cris, mol(i+1:i+3),u
 					cris = cris + dot_product(mol(i+1:i+3),u)
 				end do
 						 
@@ -250,6 +260,21 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 			end if
 		end do
 	end do
+	
+	! Determine rdf center
+	do i=1,2
+		do j=1,size(rdf),4
+			cm(i) = cm(i) + rdf(i+j)
+		end do
+	end do
+	cm = cm/(size(rdf)/3)
+	
+	do i=1,10
+		do j=1,size(rdf),3
+			cm_d = sqrt((rdf(j+1:j+2)-cm)**2)
+			
+			if(cm_d .gt. (i-1)*box(1)/10 .and. cm_d .lt. i*box(1)/10) then
+				rdfs(i) = rdfs(i) + dot_product(mol)
 	
 	! Write frame averages
 	write(9,'(I12,2(f12.4))') index, angles/nmol
