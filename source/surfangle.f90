@@ -222,7 +222,6 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 				mol(size(mol)-3) = k
 				mol(size(mol)-2:size(mol)) = u
 				do i=1,size(mol)-4,4
-					write(*,'(7(f9.4))') cris, mol(i+1:i+3),u
 					cris = cris + dot_product(mol(i+1:i+3),u)
 				end do
 						 
