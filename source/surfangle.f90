@@ -18,7 +18,7 @@ program surfangle
 	! Allocated
 	character :: arg*20, label*8, skip
 	integer :: narg, index, status, frame, i, j, k, natoms, types
-	real :: box(3), ts=0.
+	real :: box(3), ts=0., rdf(2,8)
 	
 	! Handle command line arguments
 	! Check if any arguments are found
@@ -71,7 +71,7 @@ stop
 	
 	types = size(labels,1)
 	allocate(hist(types, 9), global_angle(types), global_nmol(types))
-	hist = 0; global_angle = 0; global_nmol = 0;
+	hist = 0; global_angle = 0; global_nmol = 0; rdf(:,:) = 0;
 	
 	! File opening properties
 	open(8, file="HISTORY", status="old", action="read") ! Open HISTORY
@@ -85,7 +85,7 @@ stop
 	write(10,*) "Angles to surface (surf) and orientation angles (ori). Angles are all in Degrees."
 	write(11,*) "Angles distribution frequency (%)."
 	write(11,'(A80,(/),A12,A12,9(I12))') "Angle interval","timestep","molecule",10,20,30,40,50,60,70,80,90
-	write(12,'(A12,2X,A8,6X,10(2X,f12.1))') "timestep", "cris",0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0
+	write(12,'(A12,2X,A12)') "timestep", "cris"
 	
 	
 	! Discard HEADER
@@ -104,10 +104,12 @@ stop
 			read(8,*) skip, box(2)
 			read(8,*) skip, skip, box(3)
 			
+			write(*,"(A3,I12)",advance="no") "ts:", index
+			
 			write(10,'(9(A12),(/),I12)') "timestep", "surf", "ori", "u(x)", "u(y)", "u(z)",&
 			"v(x)", "v(y)", "v(z)", index
 			
-			call calc_angles(index, natoms, labels, types, box, global_nmol, global_angle, hist)
+			call calc_angles(index, natoms, labels, types, box, global_nmol, global_angle, hist, rdf)
 		end if
 	end do
 
@@ -123,11 +125,16 @@ stop
 		write(11,'(12X,A12,9(f12.3))') trim(labels(i,1))//"-"//trim(labels(i,2)), hist(i,:)
 	end do
 	
+	! Write Global RDF
+	write(12,"(/,A12)") "RDF"
+	write(12,"(A12,9(2X,f12.8))") "Radius", rdf(1,:)
+	write(12,"(A12,9(2X,f12.8))") "cris", rdf(2,:)/ts
+	
 	close(8); close(9); close(10); close(11); close(12);
 
 end program surfangle
 
-subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_angle, hist)
+subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_angle, hist, rdf)
 	implicit none
 	
 	! Variables comming from outside
@@ -137,10 +144,10 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	
 	! Subroutine variables
 	! Arrays
-	real, allocatable :: mol(:,:), temp(:,:), cms(:,:), rdf(:,:)
+	real, allocatable :: mol(:,:), temp(:,:), cms(:,:)
 	integer :: frame_hist(types,9)
 	real :: u(3), v(3), ex(3)=[1,0,0], ez(3)=[0,0,1], nmol(types), angles(types), coord(types*2,3),&
-	cm(2)=[0,0]
+	cm(2)=[0,0], rdf(2,8)
 	logical :: check(types,2)
 	! Single Value
 	integer :: i, j, k, n, comb
@@ -274,7 +281,7 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	cm = cm/(size(cms,1))
 	
 	! Calculate RDF (Ring based)
-	allocate(rdf(8,2)); rdf(:,:) = 0;
+	allocate(temp(8,2)); temp(:,:) = 0;
 	mol(:,1) = 0
 	tam = 0
 	do k=1,8
@@ -282,24 +289,21 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 			cm_d = sqrt((cms(i,2)-cm(1))**2+(cms(i,3)-cm(2))**2)
 			
 			if(cm_d > tam .and. cm_d < sqrt(((box(1)/2)**2)/8+tam**2)) then
-				rdf(k,1) = rdf(k,1) + 1
+				temp(k,1) = temp(k,1) + 1
 				mol(i,1) = k
 				
-				if(rdf(k,1)>1) then
+				if(temp(k,1)>1) then
 					do j=1,i-1
 						if(mol(j,1)==k) then
-							rdf(k,2) = rdf(k,2) + dot_product(mol(j,2:4),mol(i,2:4))
+							temp(k,2) = temp(k,2) + dot_product(mol(j,2:4),mol(i,2:4))
 						end if
 					end do
 				end if
 			end if
 		end do
-		write(*,*) tam
 		tam = sqrt(((box(1)/2)**2)/8+tam**2)
+		rdf(1,k) = tam
 	end do
-	
-	write(*,*) rdf(:,1)
-	write(*,*) rdf(:,2)
 	
 	! Write frame averages
 	write(9,'(I12,2(f12.4))') index, angles/nmol
@@ -315,17 +319,13 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	global_angle = global_angle + angles
 	global_nmol = global_nmol + nmol
 	
-	! Write Cristalinity
-	write(12,"(I12,2X)",advance="no") index;write(12,"(2X,f12.8)",advance="no") cris/comb(size(mol)/4);
+	! Write Cristalinity and add to global RDF
+	write(12,"(I12,2X,f12.8)") index, cris/comb(size(mol)/4);
 	do k=1,8
-		if(k == 8) then
-			write(12,"(2X,f12.8)") rdf(k,2)/comb(int(rdf(k,1)))
-		else
-			write(12,"(2X,f12.8)",advance="no") rdf(k,2)/comb(int(rdf(k,1)))
-		end if
+		rdf(2,k) = rdf(2,k) + temp(k,2)/comb(int(temp(k,1)))
 	end do
 	
-	deallocate(mol, rdf, cms);
+	deallocate(mol, temp, cms);
 end subroutine calc_angles
 
 ! Calculate the number of combinations
@@ -333,8 +333,8 @@ function comb(n) result(r)
 	integer, intent(in) :: n
 	integer :: r, i
 	
-	r = 0
-	do i=1,n
+	r = 1
+	do i=3,n
 		r = r+(i-1)
 	end do
 	
