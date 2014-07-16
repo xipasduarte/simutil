@@ -104,7 +104,7 @@ stop
 			read(8,*) skip, box(2)
 			read(8,*) skip, skip, box(3)
 			
-			write(*,"(A3,I12)",advance="no") "ts:", index
+			write(*,"(A3,I12,1X)",advance="no") "ts:", index
 			
 			write(10,'(9(A12),(/),I12)') "timestep", "surf", "ori", "u(x)", "u(y)", "u(z)",&
 			"v(x)", "v(y)", "v(z)", index
