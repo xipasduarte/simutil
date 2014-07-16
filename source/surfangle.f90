@@ -18,7 +18,7 @@ program surfangle
 	! Allocated
 	character :: arg*20, label*8, skip
 	integer :: narg, index, status, frame, i, j, k, natoms, types
-	real :: box(3), ts=0., rdf(2,8)
+	real :: box(3), ts=0., rdf(3,8)
 	
 	! Handle command line arguments
 	! Check if any arguments are found
@@ -128,10 +128,12 @@ stop
 	! Write Global RDF
 	write(12,"(/,A12)") "RDF"
 	write(12,"(A12,9(2X,f12.8))") "Radius", rdf(1,:)
-	write(12,"(A12,9(2X,f12.8))") "cris", rdf(2,:)/ts
+	write(12,"(A12,9(2X,f12.8))") "Molecules", rdf(2,:)/ts
+	write(12,"(A12,9(2X,f12.8))") "Crys", rdf(3,:)/ts
 	
 	close(8); close(9); close(10); close(11); close(12);
 
+	write(*,*) "Done!"
 end program surfangle
 
 subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_angle, hist, rdf)
@@ -147,7 +149,7 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	real, allocatable :: mol(:,:), temp(:,:), cms(:,:)
 	integer :: frame_hist(types,9)
 	real :: u(3), v(3), ex(3)=[1,0,0], ez(3)=[0,0,1], nmol(types), angles(types), coord(types*2,3),&
-	cm(2)=[0,0], rdf(2,8)
+	cm(2)=[0,0], rdf(3,8)
 	logical :: check(types,2)
 	! Single Value
 	integer :: i, j, k, n, comb
@@ -322,7 +324,8 @@ subroutine calc_angles(index, natoms, labels, types, box, global_nmol, global_an
 	! Write Cristalinity and add to global RDF
 	write(12,"(I12,2X,f12.8)") index, cris/comb(size(mol)/4);
 	do k=1,8
-		rdf(2,k) = rdf(2,k) + temp(k,2)/comb(int(temp(k,1)))
+		rdf(2,k) = rdf(2,k) + temp(k,1)
+		rdf(3,k) = rdf(3,k) + temp(k,2)/comb(int(temp(k,1)))
 	end do
 	
 	deallocate(mol, temp, cms);
