@@ -19,4 +19,7 @@ The utilities uncompiled, FORTRAN 90, files are located in the ```source``` fold
 * ```gro2cfg``` - Convert a GROMACS ```.gro``` file into a DL_POLY CONFIG file.
 * ```hdb``` - Determine the hydrogen bond distribution. No bonds, bonding with the Hydrogen atom, bonding with the Oxygen atom, both.
 * ```surfangle``` - Determine the angle between molecules forming a monolayer on top of water, and the surface of the water. Can be easely fitted for other systems. (Uses the DL_POLY HISTORY file.)
-* ```surfplane``` - Determine the cluster of molecules that corresponde to the top surface in a simulation to obtain surface interactions/properties. (Uses the DL_POLY HISTORY file.)
+* ```surfplane``` - Determine the cluster of molecules that correspond to the top surface in a simulation to obtain surface interactions/properties. (Uses the DL_POLY HISTORY file.)
+
+## License
+The simutil package is licensed under The MIT License (MIT).

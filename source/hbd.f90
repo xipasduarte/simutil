@@ -11,10 +11,12 @@ program hbd
 
 	implicit none
 	! Variable declaration
-	integer, parameter :: molecules=500
-	integer :: narg, i, status=0, index, natoms
-	character :: arg*20, label*8, skip, labels(2)*8
-	real :: hb_count(4), ts=0.0, box(3)
+	integer :: narg, i, j, k, status=0, index, natoms, ts=0
+	character :: arg*20, label*8, skip
+	real :: box(3)
+	! Allocatable
+	character :: labels(:,:)*8
+	integer :: hbdist(:,:)
 	
 	! Handle command line arguments
 	! Check if any arguments are found
@@ -25,18 +27,34 @@ program hbd
 		do i=1,narg
 			call get_command_argument(i,arg)
 			select case(adjustl(arg))
-				case("--help", "-h")
-					write(*,'(A33,(/))') "hbd (Hydrogen Bond Distribution)"
-					write(*,*) "Determine the types of hydrogen bonding in mixtures."
-					stop
+				case("--labels")
+					if(mod(narg-1,2).ne.0) then
+						write(*,*) "--labels must have even number of labels"
+						stop
+					end if
+					allocate(labels((narg-i)/2,2))
+					do k=i+1,narg,2
+						do j=1,2
+							call get_command_argument(k+(j-1), arg)
+							labels(k/2,j) = trim(arg)
+						end do
+					end do
+					EXIT
 				case("--version", "-v")
 					write(*,*) "v0.1.1"
+					stop
+				case("--help","-h")
+					write(*,'(A33,(/))') "hbd (Hydrogen Bond Distribution)"
+					write(*,*) "Determine the types of hydrogen bonding in mixtures."
 					stop
 				case default
 					write(*,*)"Option unknown: ", adjustl(arg)
 					stop
 			end select
 		end do
+	else
+		allocate(labels(1,2))
+		labels(1,1:2) = (/ "HOT", "OHT" /)
 	end if
 	
 	open(8, file="HISTORY", status="old", action="read")
@@ -44,13 +62,12 @@ program hbd
 	
 	! Removes the first two header lines
 	read(8,*)
-	read(8,*)
+	read(8,*) skip, skip, natoms
 	
-	! Get labels from command line
-	labels = (/ "HOT", "OHT" /)
-	hb_count = 0
+	! Initialize hbdist array
+	allocate(hbdist(size(labels,1)+1,5))
+	hbdist(:,:) = 0
 	
-	natoms = 4500
 	do	
 		read(8,*,iostat=status) label, index
 		
@@ -60,13 +77,12 @@ program hbd
 		
 		if(label=="timestep") then
 			ts = ts + 1
-			write(*,*) label, natoms, hb_count, labels
 			
 			read(8,*) box(1)
 			read(8,*) skip, box(2)
 			read(8,*) skip, skip, box(3)
 			
-			call ts_hbd(natoms, labels, hb_count, molecules, box)
+			call ts_hbd(natoms, labels, size(labels,1), hbdist, box)
 		end if
 	end do
 	
@@ -74,8 +90,8 @@ program hbd
 	hb_count = hb_count/ts
 	
 	write(9,"(5(A12))") "HBonds", "None", "Hydrogen", "Oxygen", "Both" 
-	write(9,"(A12,4(f12.3))") "Frequency ", hb_count(1), hb_count(2), hb_count(3), hb_count(4)
-	write(9,"(A12,4(f12.3))") "Percent ", hb_count(1)*100/sum(hb_count), hb_count(2)*100/sum(hb_count),&
+	write(9,"(A12,4(f12.3))") "Frequency", hb_count(1), hb_count(2), hb_count(3), hb_count(4)
+	write(9,"(A12,4(f12.3))") "Percent", hb_count(1)*100/sum(hb_count), hb_count(2)*100/sum(hb_count),&
 	hb_count(3)*100/sum(hb_count), hb_count(4)*100/sum(hb_count)
 	
 	close(8); close(9)
@@ -83,61 +99,83 @@ program hbd
 end program hbd
 
 ! Work subroutine for hydrogen bond counting in a given timestep
-subroutine ts_hbd(natoms, labels, hb_count, molecules, box)
+subroutine ts_hbd(natoms, labels, types, hbdist, box)
 	implicit none
-	integer :: molecules
-	real :: rhb=2.67, hbarray(molecules,9), coord(3), jHO(3), jOH(3), distHO, &
-	distOH, hb_count(4), box(3)
+	
+	! Variables comming from outside
+	integer :: natoms, types
+	real :: box(3), hbdist(types+1,5)
+	character :: labels(types,2)*8
+	
+	! Subroutine Variables
+	real :: rhb=2.67, coord(3), jHO(3), jOH(3), distHO, distOH
 	logical :: box_corr(2,3)
-	real, allocatable :: iHO(:,:), iOH(:,:)
-	character :: labels(2)*8, alabel*8
-	integer :: i, j, k, natoms, nmol, hbatoms, status, code, dim=3
+	character :: label*8
+	integer :: i, j, k, n, natoms, nmol(types), hbatoms, code, dim=3
+	
+	! Allocatable
+	real :: hbmol(:,:), temp(:,:), iHO(:,:), iOH(:,:)
 	
 	nmol = 1
 	hbatoms = 0
+	allocate(hbmol(0,7))
 	
 	! Collect atoms of each molecule
 	do k=1,natoms
-		read(8,"(A8)",iostat=status) alabel
-		
-		if(alabel == "HOT") then
-			read(8,*) coord(1), coord(2), coord(3)
-			hbatoms = hbatoms + 1
+		read(8,"(A8)") label
+		do i=1,types
 			
-			hbarray(nmol,1:3) = (/ 1, 0, 0 /)
-			hbarray(nmol,4:6) = coord
-		
-		else if(alabel == "OHT") then
-			read(8,*) coord(1), coord(2), coord(3)
-			hbatoms = hbatoms + 1
-			
-			hbarray(nmol,7:9) = coord
-		
-		else
-			read(8,*)
-		end if
-		
-		if(hbatoms == size(labels)) then
-			hbatoms = 0
-			nmol = nmol + 1
-		end if
+			if(label==labels(i,1)) then
+				
+				! Increment hbmol and nmol
+				allocate(temp(size(hbmol,1)+1, size(hbmol,2)))
+				temp(1:size(hbmol,1),:) = hbmol
+				call move_alloc(temp, hbmol)
+				
+				nmol(i) = nmol(i) + 1
+				
+				! Read coords
+				read(8,*) coord(1), coord(2), coord(3)
+				
+				! Put molecule type and coords in hbmol
+				hbmol(size(hbmol,1),1:4) = (/ i, coord /)
+				
+				do
+					read(8,"(A8)") label
+					if(label==labels(i,2)) then
+				
+						! Read coords
+						read(8,*) coord(1), coord(2), coord(3)
+				
+						! Put molecule type and coords in hbmol
+						hbmol(size(hbmol,1),5:7) = coord
+				
+						exit ! go to next i
+					else
+						read(8,*)
+					end if
+				end do
+			else
+				read(8,*)
+			end if
+		end do
 	end do
 	
-	! Determine if they have hydrogen bonding and where
+	! Count hydrongen bondings
 	! Codes: 0 - none; 1 - hydrogen; 2 - oxygen; 3 - both;
-	do i=1,nmol-1
+	do i=1,sum(nmol)-1
 		code = 0
 		
 		! Boundary conditions check
 		! Determine how many projections to compare
 		do k=1,size(box)
-			if(abs(hbarray(i,3+k)) > box(k)/2-rhb ) then
+			if(abs(hbmol(i,1+k)) > box(k)/2-rhb ) then
 				box_corr(1,k) = .true.
 			else
 				box_corr(1,k) = .false.
 			end if
 
-			if(abs(hbarray(i,6+k)) > box(k)/2-rhb ) then
+			if(abs(hbmol(i,4+k)) > box(k)/2-rhb ) then
 				box_corr(2,k) = .true.
 			else
 				box_corr(2,k) = .false.
@@ -148,197 +186,198 @@ subroutine ts_hbd(natoms, labels, hb_count, molecules, box)
 		
 		do k=1,size(iHO,1) ! For iHO
 			if(k==1) then ! Original
-				iOH(k,1:3) = hbarray(i,4:6)
+				iHO(k,1:3) = hbmol(i,2:4)
 			else if(box_corr(1,1)) then ! X shift
-				iHO(k,2:3) = hbarray(i,5:6)
+				iHO(k,2:3) = hbmol(i,3:4)
 				if(iHO(1,1) > 0) then
-					iHO(k,1) = hbarray(i,4)-box(1)
+					iHO(k,1) = hbmol(i,2)-box(1)
 				else
-					iHO(k,1) = hbarray(i,4)+box(1)
+					iHO(k,1) = hbmol(i,2)+box(1)
 				end if
 			else if(box_corr(1,2)) then ! Y shift
-				iHO(k,1) = hbarray(i,4)
-				iHO(k,3) = hbarray(i,6)
+				iHO(k,1) = hbmol(i,2)
+				iHO(k,3) = hbmol(i,4)
 				if(iHO(1,2) > 0) then
-					iOH(k,2) = hbarray(i,5)-box(2)
+					iHO(k,2) = hbmol(i,3)-box(2)
 				else
-					iOH(k,2) = hbarray(i,5)+box(2)
+					iHO(k,2) = hbmol(i,3)+box(2)
 				end if
 				
 			else if(box_corr(1,3)) then ! Z shift
-				iHO(k,1:2) = hbarray(i,4:5)
+				iHO(k,1:2) = hbmol(i,2:3)
 				if(iHO(1,3) > 0) then
-					iHO(k,3) = hbarray(i,6)-box(3)
+					iHO(k,3) = hbmol(i,4)-box(3)
 				else
-					iHO(k,3) = hbarray(i,6)+box(3)
+					iHO(k,3) = hbmol(i,4)+box(3)
 				end if
 				
 			else if(box_corr(1,1) .and. box_corr(1,2)) then ! XY shift
-				iHO(k,3) = hbarray(i,6)
+				iHO(k,3) = hbmol(i,4)
 				if(iHO(1,1) > 0) then
-					iHO(k,1) = hbarray(i,4)-box(1)
+					iHO(k,1) = hbmol(i,2)-box(1)
 				else
-					iHO(k,1) = hbarray(i,4)+box(1)
+					iHO(k,1) = hbmol(i,2)+box(1)
 				end if
 				if(iHO(1,2) > 0) then
-					iOH(k,2) = hbarray(i,5)-box(2)
+					iHO(k,2) = hbmol(i,3)-box(2)
 				else
-					iOH(k,2) = hbarray(i,5)+box(2)
+					iHO(k,2) = hbmol(i,3)+box(2)
 				end if
 				
 			else if(box_corr(1,1) .and. box_corr(1,3)) then ! XZ shift
-				iHO(k,2) = hbarray(i,5)
+				iHO(k,2) = hbmol(i,3)
 				if(iHO(1,1) > 0) then
-					iHO(k,1) = hbarray(i,4)-box(1)
+					iHO(k,1) = hbmol(i,2)-box(1)
 				else
-					iHO(k,1) = hbarray(i,4)+box(1)
+					iHO(k,1) = hbmol(i,2)+box(1)
 				end if
 				if(iHO(1,3) > 0) then
-					iHO(k,3) = hbarray(i,6)-box(3)
+					iHO(k,3) = hbmol(i,4)-box(3)
 				else
-					iHO(k,3) = hbarray(i,6)+box(3)
+					iHO(k,3) = hbmol(i,4)+box(3)
 				end if
 				
 			else if(box_corr(1,2) .and. box_corr(1,3)) then ! YZ shift
-				iHO(k,1) = hbarray(i,4)
+				iHO(k,1) = hbmol(i,2)
 				if(iHO(1,2) > 0) then
-					iOH(k,2) = hbarray(i,5)-box(2)
+					iHO(k,2) = hbmol(i,3)-box(2)
 				else
-					iOH(k,2) = hbarray(i,5)+box(2)
+					iHO(k,2) = hbmol(i,3)+box(2)
 				end if
 				if(iHO(1,3) > 0) then
-					iHO(k,3) = hbarray(i,6)-box(3)
+					iHO(k,3) = hbmol(i,4)-box(3)
 				else
-					iHO(k,3) = hbarray(i,6)+box(3)
+					iHO(k,3) = hbmol(i,4)+box(3)
 				end if
 				
 			else if(box_corr(1,1) .and. box_corr(1,2) .and. box_corr(1,3)) then ! XYZ shift
 				if(iHO(1,1) > 0) then
-					iHO(k,1) = hbarray(i,4)-box(1)
+					iHO(k,1) = hbmol(i,2)-box(1)
 				else
-					iHO(k,1) = hbarray(i,4)+box(1)
+					iHO(k,1) = hbmol(i,2)+box(1)
 				end if
 				if(iHO(1,2) > 0) then
-					iOH(k,2) = hbarray(i,5)-box(2)
+					iHO(k,2) = hbmol(i,3)-box(2)
 				else
-					iOH(k,2) = hbarray(i,5)+box(2)
+					iHO(k,2) = hbmol(i,3)+box(2)
 				end if
 				if(iHO(1,3) > 0) then
-					iHO(k,3) = hbarray(i,6)-box(3)
+					iHO(k,3) = hbmol(i,4)-box(3)
 				else
-					iHO(k,3) = hbarray(i,6)+box(3)
+					iHO(k,3) = hbmol(i,4)+box(3)
 				end if
 			end if
 		end do
 		
 		do k=1,size(iOH,1) ! For iOH
 			if(k==1) then ! Original
-				iOH(k,1:3) = hbarray(i,4:6)
+				iOH(k,1:3) = hbmol(i,5:7)
 			else if(box_corr(1,1)) then ! X shift
-				iOH(k,2:3) = hbarray(i,5:6)
+				iOH(k,2:3) = hbmol(i,6:7)
 				if(iOH(1,1) > 0) then
-					iOH(k,1) = hbarray(i,4)-box(1)
+					iOH(k,1) = hbmol(i,5)-box(1)
 				else
-					iOH(k,1) = hbarray(i,4)+box(1)
+					iOH(k,1) = hbmol(i,5)+box(1)
 				end if
 			else if(box_corr(1,2)) then ! Y shift
-				iOH(k,1) = hbarray(i,4)
-				iOH(k,3) = hbarray(i,6)
+				iOH(k,1) = hbmol(i,5)
+				iOH(k,3) = hbmol(i,7)
 				if(iOH(1,2) > 0) then
-					iOH(k,2) = hbarray(i,5)-box(2)
+					iOH(k,2) = hbmol(i,6)-box(2)
 				else
-					iOH(k,2) = hbarray(i,5)+box(2)
+					iOH(k,2) = hbmol(i,6)+box(2)
 				end if
 				
 			else if(box_corr(1,3)) then ! Z shift
-				iOH(k,1:2) = hbarray(i,4:5)
+				iOH(k,1:2) = hbmol(i,5:6)
 				if(iOH(1,3) > 0) then
-					iOH(k,3) = hbarray(i,6)-box(3)
+					iOH(k,3) = hbmol(i,7)-box(3)
 				else
-					iOH(k,3) = hbarray(i,6)+box(3)
+					iOH(k,3) = hbmol(i,7)+box(3)
 				end if
 				
 			else if(box_corr(1,1) .and. box_corr(1,2)) then ! XY shift
-				iOH(k,3) = hbarray(i,6)
+				iOH(k,3) = hbmol(i,7)
 				if(iOH(1,1) > 0) then
-					iOH(k,1) = hbarray(i,4)-box(1)
+					iOH(k,1) = hbmol(i,5)-box(1)
 				else
-					iOH(k,1) = hbarray(i,4)+box(1)
+					iOH(k,1) = hbmol(i,5)+box(1)
 				end if
 				if(iOH(1,2) > 0) then
-					iOH(k,2) = hbarray(i,5)-box(2)
+					iOH(k,2) = hbmol(i,6)-box(2)
 				else
-					iOH(k,2) = hbarray(i,5)+box(2)
+					iOH(k,2) = hbmol(i,6)+box(2)
 				end if
 				
 			else if(box_corr(1,1) .and. box_corr(1,3)) then ! XZ shift
-				iOH(k,2) = hbarray(i,5)
+				iOH(k,2) = hbmol(i,6)
 				if(iOH(1,1) > 0) then
-					iOH(k,1) = hbarray(i,4)-box(1)
+					iOH(k,1) = hbmol(i,5)-box(1)
 				else
-					iOH(k,1) = hbarray(i,4)+box(1)
+					iOH(k,1) = hbmol(i,5)+box(1)
 				end if
 				if(iOH(1,3) > 0) then
-					iOH(k,3) = hbarray(i,6)-box(3)
+					iOH(k,3) = hbmol(i,7)-box(3)
 				else
-					iOH(k,3) = hbarray(i,6)+box(3)
+					iOH(k,3) = hbmol(i,7)+box(3)
 				end if
 				
 			else if(box_corr(1,2) .and. box_corr(1,3)) then ! YZ shift
-				iOH(k,1) = hbarray(i,4)
+				iOH(k,1) = hbmol(i,5)
 				if(iOH(1,2) > 0) then
-					iOH(k,2) = hbarray(i,5)-box(2)
+					iOH(k,2) = hbmol(i,6)-box(2)
 				else
-					iOH(k,2) = hbarray(i,5)+box(2)
+					iOH(k,2) = hbmol(i,6)+box(2)
 				end if
 				if(iOH(1,3) > 0) then
-					iOH(k,3) = hbarray(i,6)-box(3)
+					iOH(k,3) = hbmol(i,7)-box(3)
 				else
-					iOH(k,3) = hbarray(i,6)+box(3)
+					iOH(k,3) = hbmol(i,7)+box(3)
 				end if
 				
 			else if(box_corr(1,1) .and. box_corr(1,2) .and. box_corr(1,3)) then ! XYZ shift
 				if(iOH(1,1) > 0) then
-					iOH(k,1) = hbarray(i,4)-box(1)
+					iOH(k,1) = hbmol(i,5)-box(1)
 				else
-					iOH(k,1) = hbarray(i,4)+box(1)
+					iOH(k,1) = hbmol(i,5)+box(1)
 				end if
 				if(iOH(1,2) > 0) then
-					iOH(k,2) = hbarray(i,5)-box(2)
+					iOH(k,2) = hbmol(i,6)-box(2)
 				else
-					iOH(k,2) = hbarray(i,5)+box(2)
+					iOH(k,2) = hbmol(i,6)+box(2)
 				end if
 				if(iOH(1,3) > 0) then
-					iOH(k,3) = hbarray(i,6)-box(3)
+					iOH(k,3) = hbmol(i,7)-box(3)
 				else
-					iOH(k,3) = hbarray(i,6)+box(3)
+					iOH(k,3) = hbmol(i,7)+box(3)
 				end if
 			end if
 		end do
 		write(*,*) size(iHO,1), size(iOH,1)
+		
 		! Determine, if any, what are the hydrogen bonds
 		do j=i+1,nmol
-			jHO = hbarray(j,4:6)
-			jOH = hbarray(j,7:9)
+			jHO = hbmol(j,4:6)
+			jOH = hbmol(j,7:9)
 			
 			! Check H···O
-			if(hbarray(j,2)==0) then
+			if(hbmol(j,2)==0) then
 				do k=1,size(iOH,1)
 					distHO = sqrt( sum( (jHO-iOH(k,1:3))**2 ) )
 					if(distHO < rhb) then
-						hbarray(j,2) = 1
-						hbarray(i,3) = 1
+						hbmol(j,2) = 1
+						hbmol(i,3) = 1
 					end if
 				end do
 			end if
 			
 			! Check O···H
-			if(hbarray(j,3)==0) then
+			if(hbmol(j,3)==0) then
 				do k=1,size(iHO,1)
 					distOH = sqrt( sum( (jOH-iHO(k,1:3))**2 ) )
 					if(distOH < rhb) then
-						hbarray(j,3) = 1
-						hbarray(i,2) = 1
+						hbmol(j,3) = 1
+						hbmol(i,2) = 1
 					end if
 				end do
 			end if
@@ -347,7 +386,7 @@ subroutine ts_hbd(natoms, labels, hb_count, molecules, box)
 		deallocate(iHO, iOH)
 		
 		! Add the molecule to the statistics
-		code = hbarray(i,2) + hbarray(i,3)*2 + 1
+		code = hbmol(i,2) + hbmol(i,3)*2 + 1
 		hb_count(code) = hb_count(code) + 1
 	end do
 end subroutine ts_hbd
