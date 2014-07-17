@@ -57,7 +57,6 @@ program hbd
 		labels(1,1:2) = (/ "HOT", "OHT" /)
 	end if
 	
-	write(*,*) labels
 	open(8, file="HISTORY", status="old", action="read")
 	open(9, file="HISTORY-hbd", status="replace", action="write") ! File to write output
 	
