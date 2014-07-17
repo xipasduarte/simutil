@@ -57,6 +57,7 @@ program hbd
 		labels(1,1:2) = (/ "HOT", "OHT" /)
 	end if
 	
+	write(*,*) labels
 	open(8, file="HISTORY", status="old", action="read")
 	open(9, file="HISTORY-hbd", status="replace", action="write") ! File to write output
 	
@@ -67,6 +68,9 @@ program hbd
 	! Initialize hbdist array
 	allocate(hbdist(size(labels,1)+1,5))
 	hbdist(:,:) = 0
+	do k=1,size(labels,1)+1
+		hbdist(k,1) = k-1
+	end do
 	
 	do	
 		read(8,*,iostat=status) label, index
@@ -77,7 +81,7 @@ program hbd
 		
 		if(label=="timestep") then
 			ts = ts + 1
-			write(*,*) ts, index
+			
 			read(8,*) box(1)
 			read(8,*) skip, box(2)
 			read(8,*) skip, skip, box(3)
@@ -87,18 +91,20 @@ program hbd
 	end do
 	
 	! Average frequencies
-	!hbdist = hbdist/ts
+	hbdist = hbdist/ts
 	
-	write(9,"(5(A12))") "HBonds", "None", "Hydrogen", "Oxygen", "Both" 
+	write(9,"(5(A12))") "HBonds      ", "None", "Hydrogen", "Oxygen", "Both" 
 	do k=1,size(labels,1)+1	
 		if(k == 1) then
-			write(9,*) "All molecules"
+			write(9,"(/,A13)") "All molecules"
 		else
-			write(9,*) "Labels: ", labels(k-1,:)
+			write(9,"(/,A8,2(A6))") "Labels: ", labels(k-1,:)
 		end if
-		write(9,"(A12,4(f12.3))") adjustl("Frequency"), hbdist(k,2:5)
-		write(9,"(A12,4(f12.3))") adjustl("Percent"), hbdist(k,2:5)*100/sum(hbdist(k,2:5))
+		write(9,"(A12,4(f12.3))") "Frequency   ", hbdist(k,2:5)
+		write(9,"(A12,4(f12.3))") "Percent     ", hbdist(k,2:5)*100/sum(hbdist(k,2:5))
 	end do
+	
+	deallocate(hbdist)
 	
 	close(8); close(9);
 
@@ -126,43 +132,44 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 	
 	nmol(:) = 0
 	allocate(hbmol(0,7))
-	write(*,*) "yay"
-	! Collect atoms of each molecule
 	
+	! Collect atoms of each molecule
 	check(:,:) = .false.
 	do n=1,natoms
 		read(8,"(A8)") label
 		
-		do k=1,types
-			if(label==labels(k,1)) then
-				! Read coords
-				read(8,*) coord(k,1), coord(k,2), coord(k,3)
-				check(k,1) = .true.
-			elseif(label==labels(k,2)) then
-				! Read coords
-				read(8,*) coord(k,4), coord(k,5), coord(k,6)
-				check(k,2) = .true.
-			else
+		do k=1,types+1
+			if(k==types+1) then
 				read(8,*)
-			end if
+			else
+				if(label==labels(k,1)) then
+					! Read coords
+					read(8,*) coord(k,1), coord(k,2), coord(k,3)
+					check(k,1) = .true.
+					exit
+				elseif(label==labels(k,2)) then
+					! Read coords
+					read(8,*) coord(k,4), coord(k,5), coord(k,6)
+					check(k,2) = .true.
+					exit
+				end if
+				
+				if(count(check(k,:)) == 2) then
+					! Reset check(k,:)
+					check(k,:) = .false.
+					! Increment hbmol and nmol
+					allocate(temp(size(hbmol,1)+1, size(hbmol,2)))
+					temp(1:size(hbmol,1),:) = hbmol
+					call move_alloc(temp, hbmol)
 			
-			if(count(check(k,:)) == 2) then
-				! Reset check(k,:)
-				check(k,:) = .false.
-				! Increment hbmol and nmol
-				allocate(temp(size(hbmol,1)+1, size(hbmol,2)))
-				temp(1:size(hbmol,1),:) = hbmol
-				call move_alloc(temp, hbmol)
+					nmol(k) = nmol(k) + 1
 			
-				nmol(k) = nmol(k) + 1
-			
-				! Put molecule type and coords in hbmol
-				hbmol(size(hbmol,1),:) = (/ real(k), coord(k,:) /)
+					! Put molecule type and coords in hbmol
+					hbmol(size(hbmol,1),:) = (/ real(k), coord(k,:) /)
+				end if
 			end if
 		end do
 	end do
-	
-	write(*,*) "nmol", nmol
 	
 	! Count hydrongen bondings
 	! Codes: 0 - none; 1 - hydrogen; 2 - oxygen; 3 - both;
@@ -392,18 +399,19 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 	! Build statistics of the distribution
 	do i=1,size(hbcount,1)
 		if(sum(hbcount(i,2:3))==0) then ! Increment None
+			hbdist(1,2) = hbdist(1,2) + 1
 			hbdist(hbcount(i,1)+1,2) = hbdist(hbcount(i,1)+1,2) + 1
 		elseif(hbcount(i,3)==0) then ! Increment Hydrogen bonding
+			hbdist(1,3) = hbdist(1,3) + 1
 			hbdist(hbcount(i,1)+1,3) = hbdist(hbcount(i,1)+1,3) + 1
 		elseif(hbcount(i,2)==0) then ! Increment Oxygen bonding
+			hbdist(1,4) = hbdist(1,4) + 1
 			hbdist(hbcount(i,1)+1,4) = hbdist(hbcount(i,1)+1,4) + 1
 		else ! Increment Both
+			hbdist(1,5) = hbdist(1,5) + 1
 			hbdist(hbcount(i,1)+1,5) = hbdist(hbcount(i,1)+1,5) + 1
 		end if
 	end do
-	
-	hbdist(1,2:5) = hbdist(1,2:5) + (/ sum(hbdist(2:types+1,2)), sum(hbdist(2:types+1,3)),&
-	 sum(hbdist(2:types+1,4)), sum(hbdist(2:types+1,5)) /)
 	
 	deallocate(hbcount)
 end subroutine ts_hbd
