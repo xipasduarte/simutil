@@ -77,7 +77,7 @@ program hbd
 		
 		if(label=="timestep") then
 			ts = ts + 1
-			
+			write(*,*) ts, index
 			read(8,*) box(1)
 			read(8,*) skip, box(2)
 			read(8,*) skip, skip, box(3)
@@ -87,11 +87,18 @@ program hbd
 	end do
 	
 	! Average frequencies
-	hbdist = hbdist/ts
+	!hbdist = hbdist/ts
 	
 	write(9,"(5(A12))") "HBonds", "None", "Hydrogen", "Oxygen", "Both" 
-	write(9,"(A12,4(f12.3))") "Frequency", hbdist(1,2:5)
-	write(9,"(A12,4(f12.3))") "Percent", hbdist(1,2:5)*100/sum(hbdist(1,2:5))
+	do k=1,size(labels,1)+1	
+		if(k == 1) then
+			write(9,*) "All molecules"
+		else
+			write(9,*) "Labels: ", labels(k-1,:)
+		end if
+		write(9,"(A12,4(f12.3))") adjustl("Frequency"), hbdist(k,2:5)
+		write(9,"(A12,4(f12.3))") adjustl("Percent"), hbdist(k,2:5)*100/sum(hbdist(k,2:5))
+	end do
 	
 	close(8); close(9);
 
@@ -107,10 +114,11 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 	character :: labels(types,2)*8
 	
 	! Subroutine Variables
-	real :: rhb=2.67, coord(3), jHO(3), jOH(3), distHO, distOH
+	real :: rhb=2.67, coord(types,6), jHO(3), jOH(3), distHO, distOH
 	logical :: box_corr(2,3)
 	character :: label*8
 	integer :: i, j, k, n, nmol(types), code, dim=3
+	logical :: check(types,2)
 	
 	! Allocatable
 	real, allocatable :: hbmol(:,:), temp(:,:), iHO(:,:), iOH(:,:)
@@ -118,45 +126,38 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 	
 	nmol(:) = 0
 	allocate(hbmol(0,7))
-	
+	write(*,*) "yay"
 	! Collect atoms of each molecule
-	k = 0
-	do while(k <= natoms)
+	
+	check(:,:) = .false.
+	do n=1,natoms
 		read(8,"(A8)") label
-		do i=1,types
+		
+		do k=1,types
+			if(label==labels(k,1)) then
+				! Read coords
+				read(8,*) coord(k,1), coord(k,2), coord(k,3)
+				check(k,1) = .true.
+			elseif(label==labels(k,2)) then
+				! Read coords
+				read(8,*) coord(k,4), coord(k,5), coord(k,6)
+				check(k,2) = .true.
+			else
+				read(8,*)
+			end if
 			
-			if(label==labels(i,1)) then
-				
+			if(count(check(k,:)) == 2) then
+				! Reset check(k,:)
+				check(k,:) = .false.
 				! Increment hbmol and nmol
 				allocate(temp(size(hbmol,1)+1, size(hbmol,2)))
 				temp(1:size(hbmol,1),:) = hbmol
 				call move_alloc(temp, hbmol)
-				
-				nmol(i) = nmol(i) + 1
-				
-				! Read coords
-				read(8,*) coord(1), coord(2), coord(3); k = k + 1;
-				
+			
+				nmol(k) = nmol(k) + 1
+			
 				! Put molecule type and coords in hbmol
-				hbmol(size(hbmol,1),1:4) = (/ real(i), coord /)
-				
-				do
-					read(8,"(A8)") label
-					if(label==labels(i,2)) then
-				
-						! Read coords
-						read(8,*) coord(1), coord(2), coord(3); k = k + 1;
-				
-						! Put molecule type and coords in hbmol
-						hbmol(size(hbmol,1),5:7) = coord
-				
-						exit ! go to next i
-					else
-						read(8,*); k = k + 1;
-					end if
-				end do
-			else
-				read(8,*); k = k + 1;
+				hbmol(size(hbmol,1),:) = (/ real(k), coord(k,:) /)
 			end if
 		end do
 	end do
@@ -391,19 +392,20 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 	! Build statistics of the distribution
 	do i=1,size(hbcount,1)
 		if(sum(hbcount(i,2:3))==0) then ! Increment None
-			hbdist(hbcount(i,1),2) = hbdist(hbcount(i,1),2) + 1
+			hbdist(hbcount(i,1)+1,2) = hbdist(hbcount(i,1)+1,2) + 1
 		elseif(hbcount(i,3)==0) then ! Increment Hydrogen bonding
-			hbdist(hbcount(i,1),3) = hbdist(hbcount(i,1),3) + 1
+			hbdist(hbcount(i,1)+1,3) = hbdist(hbcount(i,1)+1,3) + 1
 		elseif(hbcount(i,2)==0) then ! Increment Oxygen bonding
-			hbdist(hbcount(i,1),4) = hbdist(hbcount(i,1),4) + 1
+			hbdist(hbcount(i,1)+1,4) = hbdist(hbcount(i,1)+1,4) + 1
 		else ! Increment Both
-			hbdist(hbcount(i,1),5) = hbdist(hbcount(i,1),5) + 1
+			hbdist(hbcount(i,1)+1,5) = hbdist(hbcount(i,1)+1,5) + 1
 		end if
 	end do
 	
-	hbdist(1,2:5) = hbdist(1,2:5) + (/ sum(hbdist(2:types,2)), sum(hbdist(2:types,3)), sum(hbdist(2:types,4)),&
-	sum(hbdist(2:types,5)) /)
-		
+	hbdist(1,2:5) = hbdist(1,2:5) + (/ sum(hbdist(2:types+1,2)), sum(hbdist(2:types+1,3)),&
+	 sum(hbdist(2:types+1,4)), sum(hbdist(2:types+1,5)) /)
+	
+	deallocate(hbcount)
 end subroutine ts_hbd
 			
 			
