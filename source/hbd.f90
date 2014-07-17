@@ -15,8 +15,8 @@ program hbd
 	character :: arg*20, label*8, skip
 	real :: box(3)
 	! Allocatable
-	character :: labels(:,:)*8
-	integer :: hbdist(:,:)
+	character, allocatable :: labels(:,:)*8
+	real, allocatable :: hbdist(:,:)
 	
 	! Handle command line arguments
 	! Check if any arguments are found
@@ -87,14 +87,13 @@ program hbd
 	end do
 	
 	! Average frequencies
-	hb_count = hb_count/ts
+	hbdist = hbdist/ts
 	
 	write(9,"(5(A12))") "HBonds", "None", "Hydrogen", "Oxygen", "Both" 
-	write(9,"(A12,4(f12.3))") "Frequency", hb_count(1), hb_count(2), hb_count(3), hb_count(4)
-	write(9,"(A12,4(f12.3))") "Percent", hb_count(1)*100/sum(hb_count), hb_count(2)*100/sum(hb_count),&
-	hb_count(3)*100/sum(hb_count), hb_count(4)*100/sum(hb_count)
+	write(9,"(A12,4(f12.3))") "Frequency", hbdist(1,2:5)
+	write(9,"(A12,4(f12.3))") "Percent", hbdist(1,2:5)*100/sum(hbdist(1,2:5))
 	
-	close(8); close(9)
+	close(8); close(9);
 
 end program hbd
 
@@ -111,17 +110,18 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 	real :: rhb=2.67, coord(3), jHO(3), jOH(3), distHO, distOH
 	logical :: box_corr(2,3)
 	character :: label*8
-	integer :: i, j, k, n, natoms, nmol(types), hbatoms, code, dim=3
+	integer :: i, j, k, n, nmol(types), code, dim=3
 	
 	! Allocatable
-	real :: hbmol(:,:), temp(:,:), iHO(:,:), iOH(:,:)
+	real, allocatable :: hbmol(:,:), temp(:,:), iHO(:,:), iOH(:,:)
+	integer, allocatable :: hbcount(:,:)
 	
-	nmol = 1
-	hbatoms = 0
+	nmol(:) = 0
 	allocate(hbmol(0,7))
 	
 	! Collect atoms of each molecule
-	do k=1,natoms
+	k = 0
+	do while(k <= natoms)
 		read(8,"(A8)") label
 		do i=1,types
 			
@@ -135,36 +135,41 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 				nmol(i) = nmol(i) + 1
 				
 				! Read coords
-				read(8,*) coord(1), coord(2), coord(3)
+				read(8,*) coord(1), coord(2), coord(3); k = k + 1;
 				
 				! Put molecule type and coords in hbmol
-				hbmol(size(hbmol,1),1:4) = (/ i, coord /)
+				hbmol(size(hbmol,1),1:4) = (/ real(i), coord /)
 				
 				do
 					read(8,"(A8)") label
 					if(label==labels(i,2)) then
 				
 						! Read coords
-						read(8,*) coord(1), coord(2), coord(3)
+						read(8,*) coord(1), coord(2), coord(3); k = k + 1;
 				
 						! Put molecule type and coords in hbmol
 						hbmol(size(hbmol,1),5:7) = coord
 				
 						exit ! go to next i
 					else
-						read(8,*)
+						read(8,*); k = k + 1;
 					end if
 				end do
 			else
-				read(8,*)
+				read(8,*); k = k + 1;
 			end if
 		end do
 	end do
 	
+	write(*,*) "nmol", nmol
+	
 	! Count hydrongen bondings
 	! Codes: 0 - none; 1 - hydrogen; 2 - oxygen; 3 - both;
+	allocate(hbcount(size(hbmol,1),3))
+	hbcount(:,1) = hbmol(:,1)
+	hbcount(:,2:3) = 0
+	
 	do i=1,sum(nmol)-1
-		code = 0
 		
 		! Boundary conditions check
 		! Determine how many projections to compare
@@ -353,42 +358,52 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 				end if
 			end if
 		end do
-		write(*,*) size(iHO,1), size(iOH,1)
 		
 		! Determine, if any, what are the hydrogen bonds
-		do j=i+1,nmol
-			jHO = hbmol(j,4:6)
-			jOH = hbmol(j,7:9)
+		do j=i+1,sum(nmol)
+			jHO = hbmol(j,2:4)
+			jOH = hbmol(j,5:7)
 			
 			! Check H···O
-			if(hbmol(j,2)==0) then
-				do k=1,size(iOH,1)
-					distHO = sqrt( sum( (jHO-iOH(k,1:3))**2 ) )
-					if(distHO < rhb) then
-						hbmol(j,2) = 1
-						hbmol(i,3) = 1
-					end if
-				end do
-			end if
+			do k=1,size(iOH,1)
+				distHO = sqrt( sum( (jHO-iOH(k,1:3))**2 ) )
+				if(distHO < rhb) then
+					hbcount(j,2) = hbcount(j,2) + 1
+					hbcount(i,3) = hbcount(i,3) + 1
+					exit
+				end if
+			end do
 			
 			! Check O···H
-			if(hbmol(j,3)==0) then
-				do k=1,size(iHO,1)
-					distOH = sqrt( sum( (jOH-iHO(k,1:3))**2 ) )
-					if(distOH < rhb) then
-						hbmol(j,3) = 1
-						hbmol(i,2) = 1
-					end if
-				end do
-			end if
+			do k=1,size(iHO,1)
+				distOH = sqrt( sum( (jOH-iHO(k,1:3))**2 ) )
+				if(distOH < rhb) then
+					hbcount(j,3) = hbcount(j,3) + 1
+					hbcount(i,2) = hbcount(i,2) + 1
+				end if
+			end do
 		end do
 		
 		deallocate(iHO, iOH)
-		
-		! Add the molecule to the statistics
-		code = hbmol(i,2) + hbmol(i,3)*2 + 1
-		hb_count(code) = hb_count(code) + 1
 	end do
+	deallocate(hbmol)
+	
+	! Build statistics of the distribution
+	do i=1,size(hbcount,1)
+		if(sum(hbcount(i,2:3))==0) then ! Increment None
+			hbdist(hbcount(i,1),2) = hbdist(hbcount(i,1),2) + 1
+		elseif(hbcount(i,3)==0) then ! Increment Hydrogen bonding
+			hbdist(hbcount(i,1),3) = hbdist(hbcount(i,1),3) + 1
+		elseif(hbcount(i,2)==0) then ! Increment Oxygen bonding
+			hbdist(hbcount(i,1),4) = hbdist(hbcount(i,1),4) + 1
+		else ! Increment Both
+			hbdist(hbcount(i,1),5) = hbdist(hbcount(i,1),5) + 1
+		end if
+	end do
+	
+	hbdist(1,2:5) = hbdist(1,2:5) + (/ sum(hbdist(2:types,2)), sum(hbdist(2:types,3)), sum(hbdist(2:types,4)),&
+	sum(hbdist(2:types,5)) /)
+		
 end subroutine ts_hbd
 			
 			

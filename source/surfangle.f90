@@ -79,6 +79,7 @@ stop
 	open(10, file="HISTORY-angles", status="replace", action="write") ! Create and open output for all angles
 	open(11, file="HISTORY-hist", status="replace", action="write") ! Create and open output for histograms
 	open(12, file="HISTORY-cris", status="replace", action="write") ! Create and open output for cristalinity
+	open(13, file="HISTORY-rdf", status="replace", action="write") ! Create and open output for RDF
 	
 	! Files HEADER's
 	write(9,*) "Timestep average angles to surface (Degrees). Average over all simulation at the end of file."
@@ -86,7 +87,6 @@ stop
 	write(11,*) "Angles distribution frequency (%)."
 	write(11,'(A80,(/),A12,A12,9(I12))') "Angle interval","timestep","molecule",10,20,30,40,50,60,70,80,90
 	write(12,'(A12,2X,A12)') "timestep", "cris"
-	
 	
 	! Discard HEADER
 	read(8,*); read(8,*) skip, skip, natoms;
@@ -126,10 +126,10 @@ stop
 	end do
 	
 	! Write Global RDF
-	write(12,"(/,A12)") "RDF"
-	write(12,"(A12,9(2X,f12.8))") "Radius", rdf(1,:)
-	write(12,"(A12,9(2X,f12.8))") "Molecules", rdf(2,:)/ts
-	write(12,"(A12,9(2X,f12.8))") "Crys", rdf(3,:)/ts
+	write(13,"(/,A12)") "RDF"
+	write(13,"(A12,9(2X,f12.8))") "Radius", rdf(1,:)
+	write(13,"(A12,9(2X,f12.8))") "Molecules", rdf(2,:)/ts
+	write(13,"(A12,9(2X,f12.8))") "Crys", rdf(3,:)/ts
 	
 	close(8); close(9); close(10); close(11); close(12);
 
