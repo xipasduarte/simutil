@@ -67,9 +67,6 @@ program hbd
 	! Initialize hbdist array
 	allocate(hbdist(size(labels,1)+1,5))
 	hbdist(:,:) = 0
-	do k=1,size(labels,1)+1
-		hbdist(k,1) = k-1
-	end do
 	
 	do	
 		read(8,*,iostat=status) label, index
@@ -371,22 +368,22 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 			jHO = hbmol(j,2:4)
 			jOH = hbmol(j,5:7)
 			
-			! Check H···O
+			! Check O···H
 			do k=1,size(iOH,1)
-				distHO = sqrt( sum( (jHO-iOH(k,1:3))**2 ) )
-				if(distHO < rhb) then
-					hbcount(j,2) = hbcount(j,2) + 1
+				distOH = sqrt( sum( (jHO-iOH(k,1:3))**2 ) )
+				if(distOH < rhb) then
 					hbcount(i,3) = hbcount(i,3) + 1
+					hbcount(j,2) = hbcount(j,2) + 1
 					exit
 				end if
 			end do
 			
-			! Check O···H
+			! Check H···O
 			do k=1,size(iHO,1)
-				distOH = sqrt( sum( (jOH-iHO(k,1:3))**2 ) )
-				if(distOH < rhb) then
-					hbcount(j,3) = hbcount(j,3) + 1
+				distHO = sqrt( sum( (jOH-iHO(k,1:3))**2 ) )
+				if(distHO < rhb) then
 					hbcount(i,2) = hbcount(i,2) + 1
+					hbcount(j,3) = hbcount(j,3) + 1
 				end if
 			end do
 		end do
