@@ -133,6 +133,7 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 	check(:,:) = .false.
 	do n=1,natoms
 		read(8,"(A8)") label
+		write(*,*) n, label
 		
 		do k=1,types+1
 			if(k==types+1) then
@@ -142,14 +143,18 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 					! Read coords
 					read(8,*) coord(k,1), coord(k,2), coord(k,3)
 					check(k,1) = .true.
-					exit
+					if(count(check(k,:)) /= 2) then	
+						exit
+					end if
 				elseif(label==labels(k,2)) then
 					! Read coords
 					read(8,*) coord(k,4), coord(k,5), coord(k,6)
 					check(k,2) = .true.
-					exit
+					if(count(check(k,:)) /= 2) then	
+						exit
+					end if
 				end if
-				
+				write(*,*) check
 				if(count(check(k,:)) == 2) then
 					! Reset check(k,:)
 					check(k,:) = .false.
@@ -162,6 +167,7 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 			
 					! Put molecule type and coords in hbmol
 					hbmol(size(hbmol,1),:) = (/ real(k), coord(k,:) /)
+					exit
 				end if
 			end if
 		end do
