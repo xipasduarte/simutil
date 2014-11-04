@@ -133,7 +133,6 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 	check(:,:) = .false.
 	do n=1,natoms
 		read(8,"(A8)") label
-		write(*,*) n, label
 		
 		do k=1,types+1
 			if(k==types+1) then
@@ -154,7 +153,7 @@ subroutine ts_hbd(natoms, labels, types, hbdist, box)
 						exit
 					end if
 				end if
-				write(*,*) check
+				
 				if(count(check(k,:)) == 2) then
 					! Reset check(k,:)
 					check(k,:) = .false.
