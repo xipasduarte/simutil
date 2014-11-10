@@ -4,15 +4,18 @@
 ! Author: Pedro Duarte
 ! License: MIT License
 ! Version: 0.0.1
-! Description: Extract data from DL_POLY's OUTPUT file.
+! Description: Extract data from DL_POLY's OUTPUT or STATIS file.
 
 program dl_energy
 	implicit none
 	! Variable declaration
 	! Allocatable
+	real, allocatable :: values(:), output(:)
+	integer, allocatable :: properties(:), temp_i(:)
 	! Allocated
-	character :: arg*20, label*9, simul*30, labels(3,10)*9, keys*80
-	integer :: narg, i, j, k, ts_tot=0, dts=0, ts=1, curr_ts
+	character :: arg*20, var*2, label_list(30)*6, keys*70, srcfile*80="STATIS", outfile*80="STATIS-out", line*80
+	integer :: status, narg, i, j, k, ts_tot=0, ts, arr_size, prop_size
+	real :: time
 	
 	! Handle command line arguments
 	! Check if any arguments are found
@@ -20,9 +23,15 @@ program dl_energy
 	! Loop over the arguments
 	if(narg>0)then
 		! loop across options
-		do i=1,narg
+		do i=1,narg,2
 			call get_command_argument(i,arg)
 			select case(adjustl(arg))
+				case("--srcfile", "-s")
+					call get_command_argument(i+1,arg)
+					srcfile=arg
+				case("--outfile", "-o")
+					call get_command_argument(i+1,arg)
+					outfile=arg
 				case("--version", "-v")
 					write(*,*) "v0.0.1"
 					stop
@@ -36,56 +45,99 @@ program dl_energy
 		end do
 	end if
 	
-
-	open(8, file="OUTPUT", status="old", action="read") ! Open OUTPUT
+	label_list=(/ "engcns", "temp  ", "engcfg", "engsrp", "engcpe", "engbnd", "engang", "engdih", "engtet", &
+	"enthal", "tmprot", "vir   ", "virsrp", "vircpe", "virbnd", "birang", "vircon", "virtet", "volume", "tmpshl", &
+	"engshl", "virshl", "alpha ", "beta  ", "gamma ", "virpmf", "press ", "amsd  ", "stress", "cell  " /)
 	
-	do
-		if(ts_tot==0 .and. dts==0) then
-			read(8,"(A30)", advance="no") simul
-			if(simul==" selected number of timesteps ") then
-				read(8,*) ts_tot
-			else if(simul==" data printing interval       ")then
-				read(8,*) dts
-			else
-				read(8,*)
-			end if
+	do i=1,size(label_list, 1)
+		if(mod(i,5)==0) then
+			write(*,"(i2,a3,a6,2X)", advance="yes") i, " - ", label_list(i)
 		else
-			read(8,"(A9)") label
-			
-			if(label == "---------") then
-				read(8,"(A9,9(3X,A9))") labels(1,1), labels(1,2), labels(1,3), labels(1,4), labels(1,5),&
-				labels(1,6), labels(1,7), labels(1,8), labels(1,9), labels(1,10)
-				read(8,"(A9,9(3X,A9))") labels(2,1), labels(2,2), labels(2,3), labels(2,4), labels(2,5),&
-				labels(2,6), labels(2,7), labels(2,8), labels(2,9), labels(2,10)
-				read(8,"(A9,9(3X,A9))") labels(3,1), labels(3,2), labels(3,3), labels(3,4), labels(3,5),&
-				labels(3,6), labels(3,7), labels(3,8), labels(3,9), labels(3,10)
-			
-				exit
+			write(*,"(i2,a3,a6,2X)", advance="no") i, " - ", label_list(i)
+		end if
+	end do
+	write(*,"(/,a80)") adjustl("Select values to extract (comma separated).")
+	read(*,"(a70)") keys
+	
+	! Abort program if it has no keys
+	if(len_trim(keys)==0) then
+		write(*,*) "No properties were selected."
+		call abort
+	end if
+	
+	! Convert keys string into an array
+	allocate(properties(1)); properties(:) = 0;
+	
+	do i=1,len_trim(keys)
+		prop_size=size(properties,1)
+		if(keys(i:i)/=",") then
+			if(properties(size(properties,1))==0) then
+				read(keys(i:i), "(i2)") properties(prop_size)
+			else
+				var = char(properties(prop_size))//keys(i:i)
+				read(var, "(i2)") properties(prop_size)
 			end if
+		else ! Increment properties array
+			allocate(temp_i(prop_size+1))
+			temp_i(1:size(properties,1)) = properties(:)
+			temp_i(size(temp_i,1)) = 0
+			call move_alloc(temp_i, properties)
 		end if
 	end do
 	
-	! Ask for the keys
-	do i=1,3
-		do j=2,10			
-			if(j==10) then
-				write(*,"(I3,A1,A9)") (i-1)*10+j,":",labels(i,j)
-			else
-				write(*,"(I3,A1,A9)", advance="no") (i-1)*10+j,":",labels(i,j)
-			end if
-		end do
+	! Allocate output string with required size
+	allocate(output(size(properties,1)))
+	
+	! Open files
+	open(1, file=srcfile, status="old", action="read") ! Open STATIS
+	open(2, file=outfile, status="replace", action="write") ! Open output file
+	
+	! Transcribe header
+	read(1,"(a80)") line; write(2,*) adjustl(line);
+	read(1,"(a80)") line; write(2,*) adjustl(line);
+	! Write labels
+	write(2,"(a10,a14)", advance="no") adjustl("timestep"), adjustl("time")
+	do i=1,size(properties,1)
+		if(i==size(properties,1)) then
+			write(2,"(a14)", advance="yes") adjustl(label_list(properties(i)))
+		else
+			write(2,"(a14)", advance="no") adjustl(label_list(properties(i)))
+		end if
 	end do
 	
-	write(*,*) "Keys (space separation): "
-	read(*,*) keys
-	
-	! Discard empty line
-	read(8,*)
-	
-	k = 1
-	do while(k<=8)
-		read(8,"(I9)") curr_ts
+	do
+		! Read timestep header
+		read(1,"(i10,e14.6,i10)", iostat=status) ts, time, arr_size
 		
+		! Exit if there are no more timesteps
+		if(status==-1) then
+			EXIT
+		end if
 		
+		! Write timestep information
+		write(2,"(i10,e14.6)", advance="no") ts, time
+		
+		! Get all values into values() array
+		allocate(values(arr_size))
+		do i=1,arr_size
+			if(mod(i,5)==0 .or. i==arr_size) then
+				read(1,"(e14.6)", advance="yes") values(i)
+			else
+				read(1,"(e14.6)", advance="no") values(i)
+			end if
+		end do
+		
+		! Select requested values and record in output file and array
+		do i=1,size(properties,1)
+			if(i==size(properties,1)) then
+				write(2,"(e14.6)", advance="yes") values(properties(i))
+			else
+				write(2,"(e14.6)", advance="no") values(properties(i))
+			end if
+			
+			output(i) = output(i) + values(properties(i))
+		end do
+		deallocate(values)
+	end do
 					
 end program dl_energy
