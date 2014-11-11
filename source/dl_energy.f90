@@ -13,8 +13,8 @@ program dl_energy
 	real, allocatable :: values(:), output(:)
 	integer, allocatable :: properties(:), temp_i(:)
 	! Allocated
-	character :: arg*20, var*2, label_list(30)*6, keys*70, srcfile*80="STATIS", outfile*80="STATIS-out", line*80
-	integer :: status, narg, i, j, k, ts_tot=0, ts, arr_size, prop_size
+	character :: arg*20, label_list(30)*6, keys*70, srcfile*80="STATIS", outfile*80="STATIS-out", line*80
+	integer :: status, var, narg, i, j, k, ts_tot=0, ts, arr_size, prop_size
 	real :: time
 	
 	! Handle command line arguments
@@ -71,15 +71,15 @@ program dl_energy
 	do i=1,len_trim(keys)
 		prop_size=size(properties,1)
 		if(keys(i:i)/=",") then
-			if(properties(size(properties,1))==0) then
+			if(properties(prop_size)==0) then
 				read(keys(i:i), "(i2)") properties(prop_size)
 			else
-				var = char(properties(prop_size))//keys(i:i)
-				read(var, "(i2)") properties(prop_size)
+				read(keys(i:i),"(i2)") var
+				properties(prop_size) = properties(prop_size)*10 + var
 			end if
 		else ! Increment properties array
 			allocate(temp_i(prop_size+1))
-			temp_i(1:size(properties,1)) = properties(:)
+			temp_i(1:prop_size) = properties(:)
 			temp_i(size(temp_i,1)) = 0
 			call move_alloc(temp_i, properties)
 		end if
@@ -116,6 +116,7 @@ program dl_energy
 		
 		! Write timestep information
 		write(2,"(i10,e14.6)", advance="no") ts, time
+		ts_tot = ts_tot + 1
 		
 		! Get all values into values() array
 		allocate(values(arr_size))
@@ -138,6 +139,16 @@ program dl_energy
 			output(i) = output(i) + values(properties(i))
 		end do
 		deallocate(values)
+	end do
+	
+	! Write averages
+	write(2,"(a24)", advance="no") "Averages"
+	do i=1,size(output,1)
+		if(i==size(output,1)) then
+			write(2,"(e14.6)", advance="yes") output(i)/ts_tot
+		else
+			write(2,"(e14.6)", advance="no") output(i)/ts_tot
+		end if
 	end do
 					
 end program dl_energy
