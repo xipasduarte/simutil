@@ -6,14 +6,14 @@
 ! Version: 0.0.1
 ! Description: Extract data from DL_POLY's OUTPUT or STATIS file.
 
-program dl_energy
+program dl_statis
 	implicit none
 	! Variable declaration
 	! Allocatable
 	real, allocatable :: values(:), output(:)
 	integer, allocatable :: properties(:), temp_i(:)
 	! Allocated
-	character :: arg*20, label_list(30)*6, keys*70, srcfile*80="STATIS", outfile*80="STATIS-out", line*80
+	character :: arg*20, label_list(27)*6, keys*70, srcfile*80="STATIS", outfile*80="STATIS-dl_statis", line*80
 	integer :: status, var, narg, i, j, k, ts_tot=0, ts, arr_size, prop_size
 	real :: time
 	logical :: col=.false.
@@ -166,4 +166,4 @@ program dl_energy
 		end if
 	end do
 					
-end program dl_energy
+end program dl_statis
