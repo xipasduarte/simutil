@@ -104,22 +104,20 @@ program dl_statis
 	read(1,"(a80)") line; write(2,*) adjustl(line);
 	! Write labels
 	write(2,"(a10,a14)", advance="no") adjustl("timestep"), adjustl("time")
-	do i=1,size(properties,1)
-		if(i==size(properties,1)) then
-			if(properties(i) .lt. size(label_list,1)-3) then
-				write(2,"(a14)", advance="yes") adjustl(label_list(properties(i)))
-			else
-				write(2,"(i14)", advance="yes") properties(i)
-			end if
-		else
+	do i=1,size(properties,1)-1
 			if(properties(i) .lt. size(label_list,1)) then
 				write(2,"(a14)", advance="no") adjustl(label_list(properties(i)))
 			else
 				write(2,"(i14)", advance="no") properties(i)
 			end if
-		end if
 	end do
+	if(properties(size(properties,1)) .lt. size(label_list,1)) then
+		write(2,"(a14)", advance="yes") adjustl(label_list(properties(size(properties,1))))
+	else
+		write(2,"(i14)", advance="yes") properties(size(properties,1))
+	end if
 	
+	! Process each timestep
 	do
 		! Read timestep header
 		read(1,"(i10,e14.6,i10)", iostat=status) ts, time, arr_size
