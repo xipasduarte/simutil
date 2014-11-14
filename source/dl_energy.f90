@@ -16,6 +16,7 @@ program dl_energy
 	character :: arg*20, label_list(30)*6, keys*70, srcfile*80="STATIS", outfile*80="STATIS-out", line*80
 	integer :: status, var, narg, i, j, k, ts_tot=0, ts, arr_size, prop_size
 	real :: time
+	logical :: col=.false.
 	
 	! Handle command line arguments
 	! Check if any arguments are found
@@ -32,6 +33,10 @@ program dl_energy
 				case("--outfile", "-o")
 					call get_command_argument(i+1,arg)
 					outfile=arg
+				case("--col", "-c")
+					call get_command_argument(i+1,arg)
+					col=.true.
+					keys=arg
 				case("--version", "-v")
 					write(*,*) "v0.0.1"
 					stop
@@ -47,17 +52,19 @@ program dl_energy
 	
 	label_list=(/ "engcns", "temp  ", "engcfg", "engsrp", "engcpe", "engbnd", "engang", "engdih", "engtet", &
 	"enthal", "tmprot", "vir   ", "virsrp", "vircpe", "virbnd", "birang", "vircon", "virtet", "volume", "tmpshl", &
-	"engshl", "virshl", "alpha ", "beta  ", "gamma ", "virpmf", "press ", "amsd  ", "stress", "cell  " /)
+	"engshl", "virshl", "alpha ", "beta  ", "gamma ", "virpmf", "press " /)
 	
-	do i=1,size(label_list, 1)
-		if(mod(i,5)==0) then
-			write(*,"(i2,a3,a6,2X)", advance="yes") i, " - ", label_list(i)
-		else
-			write(*,"(i2,a3,a6,2X)", advance="no") i, " - ", label_list(i)
-		end if
-	end do
-	write(*,"(/,a80)") adjustl("Select values to extract (comma separated).")
-	read(*,"(a70)") keys
+	if(.not. col) then
+		do i=1,size(label_list, 1)
+			if(mod(i,5)==0) then
+				write(*,"(i2,a3,a6,2X)", advance="yes") i, " - ", label_list(i)
+			else
+				write(*,"(i2,a3,a6,2X)", advance="no") i, " - ", label_list(i)
+			end if
+		end do
+		write(*,"(/,a42)") adjustl("Select values to extract (comma separated).")
+		read(*,"(a70)") keys
+	end if
 	
 	! Abort program if it has no keys
 	if(len_trim(keys)==0) then
@@ -99,9 +106,17 @@ program dl_energy
 	write(2,"(a10,a14)", advance="no") adjustl("timestep"), adjustl("time")
 	do i=1,size(properties,1)
 		if(i==size(properties,1)) then
-			write(2,"(a14)", advance="yes") adjustl(label_list(properties(i)))
+			if(properties(i) .lt. size(label_list,1)-3) then
+				write(2,"(a14)", advance="yes") adjustl(label_list(properties(i)))
+			else
+				write(2,"(i14)", advance="yes") properties(i)
+			end if
 		else
-			write(2,"(a14)", advance="no") adjustl(label_list(properties(i)))
+			if(properties(i) .lt. size(label_list,1)) then
+				write(2,"(a14)", advance="no") adjustl(label_list(properties(i)))
+			else
+				write(2,"(i14)", advance="no") properties(i)
+			end if
 		end if
 	end do
 	
