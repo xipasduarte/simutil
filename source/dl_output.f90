@@ -99,8 +99,11 @@ program dl_output
 	open(2, file=outfile, status="replace", action="write") ! Open output file
 	
 	! Transcribe header & search for data stacking interval
-	read(1,"(9(/),a80,13(/),30X,i12,8(/),30X,i12)") line, ts_tot, stack
+	read(1,"(9(/),a80,13(/),30X,i12,8(/),30X,i12)") line, ts_tot, stack; ts = stack;
 	write(2,*) adjustl(line)
+	
+	! Determine the size for the STDEV array
+	
 	
 	! Write labels
 	write(2,"(a9,2X)", advance="no") adjustl("step")
@@ -116,9 +119,6 @@ program dl_output
 	else
 		write(2,"(i12)", advance="yes") keys_arr(size(keys_arr,1))
 	end if
-	
-	! Search for print interval and tot_ts
-	ts = stack
 	
 	! Process each timestep
 	do while(ts_tot>=ts)
