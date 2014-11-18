@@ -10,13 +10,14 @@ program dl_output
 	implicit none
 	! Variable declaration
 	! Allocatable
-	real, allocatable :: values(:), output(:)
-	integer, allocatable :: properties(:), temp_i(:)
+	real, allocatable :: values(:)
+	integer, allocatable :: keys_arr(:), temp_i(:)
 	! Allocated
 	character :: arg*20, label_list(27)*12, keys*70, srcfile*80="OUTPUT", outfile*80="OUTPUT-dl_output", line*80,&
 	label*9
-	integer :: status, var, narg, i, j, ts_tot=0, ts, prop_size, stack=1, label_check, skiper=1
+	integer :: status, var, narg, i, j, k, ts_tot=0, ts, prop_size, stack=1, label_check, skiper=1
 	logical :: col=.false.
+	real :: mean(2,27)
 	
 	! Handle command line arguments
 	! Check if any arguments are found
@@ -75,26 +76,23 @@ program dl_output
 	end if
 	
 	! Convert keys string into an array
-	allocate(properties(1)); properties(:) = 0;
+	allocate(keys_arr(1)); keys_arr(:) = 0;
 	do i=1,len_trim(keys)
-		prop_size=size(properties,1)
+		prop_size=size(keys_arr,1)
 		if(keys(i:i)/=",") then
-			if(properties(prop_size)==0) then
-				read(keys(i:i), "(i2)") properties(prop_size)
+			if(keys_arr(prop_size)==0) then
+				read(keys(i:i), "(i2)") keys_arr(prop_size)
 			else
 				read(keys(i:i),"(i2)") var
-				properties(prop_size) = properties(prop_size)*10 + var
+				keys_arr(prop_size) = keys_arr(prop_size)*10 + var
 			end if
-		else ! Increment properties array
+		else ! Increment keys_arr array
 			allocate(temp_i(prop_size+1))
-			temp_i(1:prop_size) = properties(:)
+			temp_i(1:prop_size) = keys_arr(:)
 			temp_i(size(temp_i,1)) = 0
-			call move_alloc(temp_i, properties)
+			call move_alloc(temp_i, keys_arr)
 		end if
 	end do
-	
-	! Allocate output string with required size
-	allocate(output(size(properties,1)))
 	
 	! Open files
 	open(1, file=srcfile, status="old", action="read") ! Open OUTPUT
@@ -106,17 +104,17 @@ program dl_output
 	
 	! Write labels
 	write(2,"(a9,2X)", advance="no") adjustl("step")
-	do i=1,size(properties,1)-1
-			if(properties(i) .lt. size(label_list,1)) then
-				write(2,"(a12)", advance="no") adjustr(label_list(properties(i)))
+	do i=1,size(keys_arr,1)-1
+			if(keys_arr(i) .lt. size(label_list,1)) then
+				write(2,"(a12)", advance="no") adjustr(label_list(keys_arr(i)))
 			else
-				write(2,"(i12)", advance="no") properties(i)
+				write(2,"(i12)", advance="no") keys_arr(i)
 			end if
 	end do
-	if(properties(size(properties,1)) .lt. size(label_list,1)) then
-		write(2,"(a12)", advance="yes") adjustr(label_list(properties(size(properties,1))))
+	if(keys_arr(size(keys_arr,1)) .lt. size(label_list,1)) then
+		write(2,"(a12)", advance="yes") adjustr(label_list(keys_arr(size(keys_arr,1))))
 	else
-		write(2,"(i12)", advance="yes") properties(size(properties,1))
+		write(2,"(i12)", advance="yes") keys_arr(size(keys_arr,1))
 	end if
 	
 	! Search for print interval and tot_ts
@@ -162,28 +160,42 @@ program dl_output
 				end do
 		
 				! Select requested values and record in output file and array
-				do i=1,size(properties,1)
-					if(i==size(properties,1)) then
-						write(2,"(e12.4)", advance="yes") values(properties(i))
+				do i=1,size(keys_arr,1)
+					if(i==size(keys_arr,1)) then
+						write(2,"(e12.4)", advance="yes") values(keys_arr(i))
 					else
-						write(2,"(e12.4)", advance="no") values(properties(i))
+						write(2,"(e12.4)", advance="no") values(keys_arr(i))
 					end if
-			
-					output(i) = output(i) + values(properties(i))
 				end do
-				
 				deallocate(values)
+				
 			end if
 		end if
 	end do
 	
+	! Get Averages and R.M.S. fluctuations
+	read(1,"(16/)") ! skip lines
+	do k=1,2
+		do i=1,3
+			do j=1,9
+				if(j==1) then
+					read(1,"(9X,e12.4)", advance="no") mean(k,(i-1)*3+j)
+				else
+					read(1,"(e12.4)", advance="no") mean(k,(i-1)*3+j)
+				end if
+			end do
+			read(1,*)
+		end do
+		read(1,*)
+	end do
+
 	! Write averages
 	write(2,"(/,a9,2X)", advance="no") "Averages"
-	do i=1,size(output,1)
-		if(i==size(output,1)) then
-			write(2,"(e12.4)", advance="yes") output(i)/(ts_tot/stack)
+	do i=1,size(keys_arr,1)
+		if(i==size(keys_arr,1)) then
+			write(2,"(e12.4)", advance="yes") mean(1,keys_arr(i))
 		else
-			write(2,"(e12.4)", advance="no") output(i)/(ts_tot/stack)
+			write(2,"(e12.4)", advance="no") mean(1,keys_arr(i))
 		end if
 	end do
 	
